@@ -26,7 +26,7 @@ namespace
     }
 }
 
-HFENGINE_TEST_CASE("gpu.rhi.dx12", "CreatesDeviceSwapchainAndSubmitsTriangleFrame")
+HFENGINE_TEST_CASE("gpu.rhi.dx12", "CreatesDeviceSwapchainAndSubmitsIndexedMeshFrame")
 {
     RequireBackendOrSkip(HFEngine::RHI::RendererBackend::DirectX12);
 
@@ -52,7 +52,7 @@ HFENGINE_TEST_CASE("gpu.rhi.dx12", "CreatesDeviceSwapchainAndSubmitsTriangleFram
     HFENGINE_REQUIRE(!result.adapterName.empty());
 }
 
-HFENGINE_TEST_CASE("gpu.rhi.vulkan", "CreatesDeviceSwapchainAndSubmitsTriangleFrame")
+HFENGINE_TEST_CASE("gpu.rhi.vulkan", "CreatesDeviceSwapchainAndSubmitsIndexedMeshFrame")
 {
     RequireBackendOrSkip(HFEngine::RHI::RendererBackend::Vulkan);
 

@@ -109,6 +109,27 @@ Next target:
   backend capability reporting behind stable public interfaces before renderer
   features grow.
 
+## RHI Mesh Pipeline Foundation
+
+Branch: `codex/rhi-mesh-pipeline-foundation`
+
+Foundation delivered:
+
+- CPU-side RHI graphics pipeline descriptor and validation contract.
+- Shared Slang mesh shader source compiled to DXIL and SPIR-V.
+- DX12 indexed cube path with vertex buffer, index buffer, depth buffer, and
+  depth-tested draw submission.
+- Vulkan indexed cube path with vertex buffer, index buffer, depth image,
+  depth render pass attachment, and depth-tested draw submission.
+- GPU smoke tests now exercise an indexed mesh frame instead of only a
+  shader-generated triangle.
+
+Next target:
+
+- Rename the remaining triangle-era sandbox entrypoint files/APIs into neutral
+  sandbox renderer names and start moving shader/pipeline creation behind the
+  public RHI descriptors.
+
 ## Milestone 4: Frame Graph
 
 Branch: `codex/milestone-4-frame-graph`

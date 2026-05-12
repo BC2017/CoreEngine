@@ -13,18 +13,49 @@
 #include "imgui_impl_win32.h"
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
+#include <iterator>
 #include <limits>
 #include <optional>
 #include <string>
 #include <vector>
-#include <iterator>
 
 namespace HFEngine::RHI::Vulkan
 {
     namespace
     {
+        constexpr VkFormat DepthFormat = VK_FORMAT_D32_SFLOAT;
+
+        struct MeshVertex
+        {
+            float position[3];
+            float color[4];
+        };
+
+        constexpr std::array<MeshVertex, 8> CubeVertices{
+            MeshVertex{ { -0.50f, -0.35f, 0.25f }, { 0.95f, 0.20f, 0.18f, 1.0f } },
+            MeshVertex{ { 0.25f, -0.35f, 0.25f }, { 0.10f, 0.65f, 0.95f, 1.0f } },
+            MeshVertex{ { 0.25f, 0.40f, 0.25f }, { 0.20f, 0.85f, 0.35f, 1.0f } },
+            MeshVertex{ { -0.50f, 0.40f, 0.25f }, { 1.00f, 0.85f, 0.20f, 1.0f } },
+            MeshVertex{ { -0.20f, -0.10f, 0.70f }, { 0.80f, 0.35f, 1.00f, 1.0f } },
+            MeshVertex{ { 0.55f, -0.10f, 0.70f }, { 0.20f, 0.90f, 0.90f, 1.0f } },
+            MeshVertex{ { 0.55f, 0.65f, 0.70f }, { 0.95f, 0.45f, 0.25f, 1.0f } },
+            MeshVertex{ { -0.20f, 0.65f, 0.70f }, { 0.75f, 0.95f, 0.30f, 1.0f } },
+        };
+
+        constexpr std::array<std::uint16_t, 36> CubeIndices{
+            0, 1, 2, 0, 2, 3,
+            1, 5, 6, 1, 6, 2,
+            5, 4, 7, 5, 7, 6,
+            4, 0, 3, 4, 3, 7,
+            3, 2, 6, 3, 6, 7,
+            4, 5, 1, 4, 1, 0,
+        };
+
         struct QueueFamilySelection
         {
             std::uint32_t graphicsFamily = 0;
@@ -185,6 +216,28 @@ namespace HFEngine::RHI::Vulkan
             return extent;
         }
 
+        std::uint32_t FindMemoryType(
+            VkPhysicalDevice physicalDevice,
+            std::uint32_t typeFilter,
+            VkMemoryPropertyFlags properties)
+        {
+            VkPhysicalDeviceMemoryProperties memoryProperties{};
+            vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+            for (std::uint32_t index = 0; index < memoryProperties.memoryTypeCount; ++index)
+            {
+                const bool matchesType = (typeFilter & (1u << index)) != 0;
+                const bool matchesProperties =
+                    (memoryProperties.memoryTypes[index].propertyFlags & properties) == properties;
+                if (matchesType && matchesProperties)
+                {
+                    return index;
+                }
+            }
+
+            return std::numeric_limits<std::uint32_t>::max();
+        }
+
         struct VulkanState
         {
             VkInstance instance = VK_NULL_HANDLE;
@@ -201,6 +254,13 @@ namespace HFEngine::RHI::Vulkan
             VkRenderPass renderPass = VK_NULL_HANDLE;
             VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
             VkPipeline pipeline = VK_NULL_HANDLE;
+            VkImage depthImage = VK_NULL_HANDLE;
+            VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
+            VkImageView depthImageView = VK_NULL_HANDLE;
+            VkBuffer vertexBuffer = VK_NULL_HANDLE;
+            VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+            VkBuffer indexBuffer = VK_NULL_HANDLE;
+            VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
             VkCommandPool commandPool = VK_NULL_HANDLE;
             VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
             VkSemaphore imageAvailable = VK_NULL_HANDLE;
@@ -223,14 +283,28 @@ namespace HFEngine::RHI::Vulkan
                         vkDestroySemaphore(device, imageAvailable, nullptr);
                     if (commandPool != VK_NULL_HANDLE)
                         vkDestroyCommandPool(device, commandPool, nullptr);
+                    if (indexBuffer != VK_NULL_HANDLE)
+                        vkDestroyBuffer(device, indexBuffer, nullptr);
+                    if (indexBufferMemory != VK_NULL_HANDLE)
+                        vkFreeMemory(device, indexBufferMemory, nullptr);
+                    if (vertexBuffer != VK_NULL_HANDLE)
+                        vkDestroyBuffer(device, vertexBuffer, nullptr);
+                    if (vertexBufferMemory != VK_NULL_HANDLE)
+                        vkFreeMemory(device, vertexBufferMemory, nullptr);
                     if (pipeline != VK_NULL_HANDLE)
                         vkDestroyPipeline(device, pipeline, nullptr);
                     if (pipelineLayout != VK_NULL_HANDLE)
                         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-                    if (renderPass != VK_NULL_HANDLE)
-                        vkDestroyRenderPass(device, renderPass, nullptr);
                     for (VkFramebuffer framebuffer : framebuffers)
                         vkDestroyFramebuffer(device, framebuffer, nullptr);
+                    if (renderPass != VK_NULL_HANDLE)
+                        vkDestroyRenderPass(device, renderPass, nullptr);
+                    if (depthImageView != VK_NULL_HANDLE)
+                        vkDestroyImageView(device, depthImageView, nullptr);
+                    if (depthImage != VK_NULL_HANDLE)
+                        vkDestroyImage(device, depthImage, nullptr);
+                    if (depthImageMemory != VK_NULL_HANDLE)
+                        vkFreeMemory(device, depthImageMemory, nullptr);
                     for (VkImageView imageView : swapchainImageViews)
                         vkDestroyImageView(device, imageView, nullptr);
                     if (swapchain != VK_NULL_HANDLE)
@@ -403,6 +477,157 @@ namespace HFEngine::RHI::Vulkan
             return true;
         }
 
+        bool AllocateMemory(
+            VulkanState& state,
+            VkMemoryRequirements requirements,
+            VkMemoryPropertyFlags properties,
+            VkDeviceMemory& outMemory,
+            std::string& message)
+        {
+            const std::uint32_t memoryType =
+                FindMemoryType(state.physicalDevice, requirements.memoryTypeBits, properties);
+            if (memoryType == std::numeric_limits<std::uint32_t>::max())
+            {
+                message = "No compatible Vulkan memory type found";
+                return false;
+            }
+
+            VkMemoryAllocateInfo allocateInfo{};
+            allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            allocateInfo.allocationSize = requirements.size;
+            allocateInfo.memoryTypeIndex = memoryType;
+            return VkSucceeded(vkAllocateMemory(state.device, &allocateInfo, nullptr, &outMemory), message, "vkAllocateMemory");
+        }
+
+        bool CreateBuffer(
+            VulkanState& state,
+            VkDeviceSize size,
+            VkBufferUsageFlags usage,
+            VkBuffer& outBuffer,
+            VkDeviceMemory& outMemory,
+            std::string& message)
+        {
+            VkBufferCreateInfo bufferInfo{};
+            bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bufferInfo.size = size;
+            bufferInfo.usage = usage;
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+            if (!VkSucceeded(vkCreateBuffer(state.device, &bufferInfo, nullptr, &outBuffer), message, "vkCreateBuffer"))
+            {
+                return false;
+            }
+
+            VkMemoryRequirements requirements{};
+            vkGetBufferMemoryRequirements(state.device, outBuffer, &requirements);
+            if (!AllocateMemory(
+                    state,
+                    requirements,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    outMemory,
+                    message))
+            {
+                return false;
+            }
+
+            return VkSucceeded(vkBindBufferMemory(state.device, outBuffer, outMemory, 0), message, "vkBindBufferMemory");
+        }
+
+        bool UploadBufferData(VulkanState& state, VkDeviceMemory memory, const void* data, VkDeviceSize size, std::string& message)
+        {
+            void* mapped = nullptr;
+            if (!VkSucceeded(vkMapMemory(state.device, memory, 0, size, 0, &mapped), message, "vkMapMemory"))
+            {
+                return false;
+            }
+
+            std::memcpy(mapped, data, static_cast<std::size_t>(size));
+            vkUnmapMemory(state.device, memory);
+            return true;
+        }
+
+        bool CreateMeshBuffers(VulkanState& state, std::string& message)
+        {
+            const VkDeviceSize vertexSize = sizeof(MeshVertex) * CubeVertices.size();
+            if (!CreateBuffer(
+                    state,
+                    vertexSize,
+                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    state.vertexBuffer,
+                    state.vertexBufferMemory,
+                    message) ||
+                !UploadBufferData(state, state.vertexBufferMemory, CubeVertices.data(), vertexSize, message))
+            {
+                return false;
+            }
+
+            const VkDeviceSize indexSize = sizeof(std::uint16_t) * CubeIndices.size();
+            return CreateBuffer(
+                       state,
+                       indexSize,
+                       VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                       state.indexBuffer,
+                       state.indexBufferMemory,
+                       message) &&
+                   UploadBufferData(state, state.indexBufferMemory, CubeIndices.data(), indexSize, message);
+        }
+
+        bool CreateDepthResources(VulkanState& state, std::string& message)
+        {
+            VkImageCreateInfo imageInfo{};
+            imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.extent.width = state.swapchainExtent.width;
+            imageInfo.extent.height = state.swapchainExtent.height;
+            imageInfo.extent.depth = 1;
+            imageInfo.mipLevels = 1;
+            imageInfo.arrayLayers = 1;
+            imageInfo.format = DepthFormat;
+            imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+            imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+            if (!VkSucceeded(vkCreateImage(state.device, &imageInfo, nullptr, &state.depthImage), message, "vkCreateImage(depth)"))
+            {
+                return false;
+            }
+
+            VkMemoryRequirements requirements{};
+            vkGetImageMemoryRequirements(state.device, state.depthImage, &requirements);
+            if (!AllocateMemory(
+                    state,
+                    requirements,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    state.depthImageMemory,
+                    message))
+            {
+                return false;
+            }
+
+            if (!VkSucceeded(
+                    vkBindImageMemory(state.device, state.depthImage, state.depthImageMemory, 0),
+                    message,
+                    "vkBindImageMemory(depth)"))
+            {
+                return false;
+            }
+
+            VkImageViewCreateInfo viewInfo{};
+            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            viewInfo.image = state.depthImage;
+            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format = DepthFormat;
+            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            viewInfo.subresourceRange.levelCount = 1;
+            viewInfo.subresourceRange.layerCount = 1;
+            return VkSucceeded(
+                vkCreateImageView(state.device, &viewInfo, nullptr, &state.depthImageView),
+                message,
+                "vkCreateImageView(depth)");
+        }
+
         bool CreateRenderPass(VulkanState& state, std::string& message)
         {
             VkAttachmentDescription colorAttachment{};
@@ -417,22 +642,41 @@ namespace HFEngine::RHI::Vulkan
             colorReference.attachment = 0;
             colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+            VkAttachmentDescription depthAttachment{};
+            depthAttachment.format = DepthFormat;
+            depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+            depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+            VkAttachmentReference depthReference{};
+            depthReference.attachment = 1;
+            depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
             VkSubpassDescription subpass{};
             subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
             subpass.colorAttachmentCount = 1;
             subpass.pColorAttachments = &colorReference;
+            subpass.pDepthStencilAttachment = &depthReference;
 
             VkSubpassDependency dependency{};
             dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
             dependency.dstSubpass = 0;
-            dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            dependency.srcStageMask =
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            dependency.dstStageMask =
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+            const VkAttachmentDescription attachments[] = { colorAttachment, depthAttachment };
 
             VkRenderPassCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-            createInfo.attachmentCount = 1;
-            createInfo.pAttachments = &colorAttachment;
+            createInfo.attachmentCount = static_cast<std::uint32_t>(std::size(attachments));
+            createInfo.pAttachments = attachments;
             createInfo.subpassCount = 1;
             createInfo.pSubpasses = &subpass;
             createInfo.dependencyCount = 1;
@@ -505,8 +749,8 @@ namespace HFEngine::RHI::Vulkan
         bool CreatePipeline(VulkanState& state, std::string& message)
         {
             const std::string shaderDir = ExecutableDirectory();
-            const std::vector<std::uint32_t> vertexSpirv = ReadSpirv(shaderDir + "\\Triangle.vert.spv");
-            const std::vector<std::uint32_t> fragmentSpirv = ReadSpirv(shaderDir + "\\Triangle.frag.spv");
+            const std::vector<std::uint32_t> vertexSpirv = ReadSpirv(shaderDir + "\\Mesh.vert.spv");
+            const std::vector<std::uint32_t> fragmentSpirv = ReadSpirv(shaderDir + "\\Mesh.frag.spv");
 
             VkShaderModule vertexShader = VK_NULL_HANDLE;
             VkShaderModule fragmentShader = VK_NULL_HANDLE;
@@ -533,6 +777,26 @@ namespace HFEngine::RHI::Vulkan
             VkPipelineVertexInputStateCreateInfo vertexInput{};
             vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
+            VkVertexInputBindingDescription binding{};
+            binding.binding = 0;
+            binding.stride = sizeof(MeshVertex);
+            binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            VkVertexInputAttributeDescription attributes[2]{};
+            attributes[0].binding = 0;
+            attributes[0].location = 0;
+            attributes[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attributes[0].offset = static_cast<std::uint32_t>(offsetof(MeshVertex, position));
+            attributes[1].binding = 0;
+            attributes[1].location = 1;
+            attributes[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            attributes[1].offset = static_cast<std::uint32_t>(offsetof(MeshVertex, color));
+
+            vertexInput.vertexBindingDescriptionCount = 1;
+            vertexInput.pVertexBindingDescriptions = &binding;
+            vertexInput.vertexAttributeDescriptionCount = static_cast<std::uint32_t>(std::size(attributes));
+            vertexInput.pVertexAttributeDescriptions = attributes;
+
             VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
             inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
             inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -555,7 +819,7 @@ namespace HFEngine::RHI::Vulkan
             VkPipelineRasterizationStateCreateInfo rasterizer{};
             rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
             rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-            rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+            rasterizer.cullMode = VK_CULL_MODE_NONE;
             rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
             rasterizer.lineWidth = 1.0f;
 
@@ -571,6 +835,12 @@ namespace HFEngine::RHI::Vulkan
             colorBlend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
             colorBlend.attachmentCount = 1;
             colorBlend.pAttachments = &colorBlendAttachment;
+
+            VkPipelineDepthStencilStateCreateInfo depthStencil{};
+            depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            depthStencil.depthTestEnable = VK_TRUE;
+            depthStencil.depthWriteEnable = VK_TRUE;
+            depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -593,6 +863,7 @@ namespace HFEngine::RHI::Vulkan
             pipelineInfo.pViewportState = &viewportState;
             pipelineInfo.pRasterizationState = &rasterizer;
             pipelineInfo.pMultisampleState = &multisample;
+            pipelineInfo.pDepthStencilState = &depthStencil;
             pipelineInfo.pColorBlendState = &colorBlend;
             pipelineInfo.layout = state.pipelineLayout;
             pipelineInfo.renderPass = state.renderPass;
@@ -611,11 +882,13 @@ namespace HFEngine::RHI::Vulkan
         {
             for (VkImageView imageView : state.swapchainImageViews)
             {
+                const VkImageView attachments[] = { imageView, state.depthImageView };
+
                 VkFramebufferCreateInfo createInfo{};
                 createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
                 createInfo.renderPass = state.renderPass;
-                createInfo.attachmentCount = 1;
-                createInfo.pAttachments = &imageView;
+                createInfo.attachmentCount = static_cast<std::uint32_t>(std::size(attachments));
+                createInfo.pAttachments = attachments;
                 createInfo.width = state.swapchainExtent.width;
                 createInfo.height = state.swapchainExtent.height;
                 createInfo.layers = 1;
@@ -673,9 +946,11 @@ namespace HFEngine::RHI::Vulkan
                    PickPhysicalDevice(state, message) &&
                    CreateDevice(state, message) &&
                    CreateSwapchain(state, window, message) &&
+                   CreateDepthResources(state, message) &&
                    CreateRenderPass(state, message) &&
                    CreatePipeline(state, message) &&
                    CreateFramebuffers(state, message) &&
+                   CreateMeshBuffers(state, message) &&
                    CreateCommandsAndSync(state, message);
         }
 
@@ -693,20 +968,25 @@ namespace HFEngine::RHI::Vulkan
                 return false;
             }
 
-            VkClearValue clear{};
-            clear.color = { { 0.025f, 0.035f, 0.055f, 1.0f } };
+            VkClearValue clearValues[2]{};
+            clearValues[0].color = { { 0.025f, 0.035f, 0.055f, 1.0f } };
+            clearValues[1].depthStencil = { 1.0f, 0 };
 
             VkRenderPassBeginInfo renderPassInfo{};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             renderPassInfo.renderPass = state.renderPass;
             renderPassInfo.framebuffer = state.framebuffers[imageIndex];
             renderPassInfo.renderArea.extent = state.swapchainExtent;
-            renderPassInfo.clearValueCount = 1;
-            renderPassInfo.pClearValues = &clear;
+            renderPassInfo.clearValueCount = static_cast<std::uint32_t>(std::size(clearValues));
+            renderPassInfo.pClearValues = clearValues;
 
             vkCmdBeginRenderPass(state.commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(state.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state.pipeline);
-            vkCmdDraw(state.commandBuffer, 3, 1, 0, 0);
+
+            const VkDeviceSize vertexOffset = 0;
+            vkCmdBindVertexBuffers(state.commandBuffer, 0, 1, &state.vertexBuffer, &vertexOffset);
+            vkCmdBindIndexBuffer(state.commandBuffer, state.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+            vkCmdDrawIndexed(state.commandBuffer, static_cast<std::uint32_t>(CubeIndices.size()), 1, 0, 0, 0);
 
             ImGui_ImplVulkan_NewFrame();
             ImGui_ImplWin32_NewFrame();

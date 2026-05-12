@@ -51,14 +51,14 @@ int main(int argc, char** argv)
     std::cout << "Backend implementation status: "
               << (availability.runtimeAvailable ? "available" : availability.reason) << '\n';
     std::cout << "Backend switching: launch-time via --renderer dx12|vulkan\n";
-    std::cout << "First visible milestone: render the same triangle through both backends\n";
+    std::cout << "Current visible milestone: render the same indexed cube mesh through both backends\n";
     std::cout << "Runtime/debug tooling planned before full editor: ImGui backend/status overlay\n";
 
     if (runtime.Backend() == HFEngine::RHI::RendererBackend::DirectX12)
     {
         HFEngine::Platform::Win32Window window;
         HFEngine::Platform::WindowDesc windowDesc;
-        windowDesc.title = L"HFEngine - DirectX 12 Triangle";
+        windowDesc.title = L"HFEngine - DirectX 12 Mesh";
 
         if (!window.Create(windowDesc))
         {
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
             HFEngine::RHI::DX12::RunTriangleSandbox(commandLine.config, window);
         if (!triangle.success)
         {
-            std::cerr << "DX12 triangle failed: " << triangle.message << '\n';
+            std::cerr << "DX12 mesh render failed: " << triangle.message << '\n';
             runtime.Shutdown();
             return 1;
         }
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
     {
         HFEngine::Platform::Win32Window window;
         HFEngine::Platform::WindowDesc windowDesc;
-        windowDesc.title = L"HFEngine - Vulkan Triangle";
+        windowDesc.title = L"HFEngine - Vulkan Mesh";
 
         if (!window.Create(windowDesc))
         {
@@ -96,7 +96,7 @@ int main(int argc, char** argv)
             HFEngine::RHI::Vulkan::RunTriangleSandbox(commandLine.config, window);
         if (!triangle.success)
         {
-            std::cerr << "Vulkan triangle failed: " << triangle.message << '\n';
+            std::cerr << "Vulkan mesh render failed: " << triangle.message << '\n';
             runtime.Shutdown();
             return 1;
         }

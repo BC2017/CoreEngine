@@ -16,7 +16,7 @@ namespace HFEngine::Tools
         ImGui::Text("Frame: %u", data.framesRendered);
         ImGui::Text("Frame time: %.3f ms", data.frameTimeMilliseconds);
         ImGui::Separator();
-        ImGui::TextUnformatted("Triangle milestone");
+        ImGui::TextUnformatted("Indexed mesh milestone");
         ImGui::End();
     }
 }
