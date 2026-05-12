@@ -10,7 +10,7 @@ namespace HFEngine::RHI
                 backend,
                 true,
                 true,
-                "DirectX 12 triangle backend is available"
+                "DirectX 12 indexed mesh backend is available"
             };
         }
 
@@ -18,7 +18,7 @@ namespace HFEngine::RHI
             backend,
             true,
             true,
-            "Vulkan triangle backend is available"
+            "Vulkan indexed mesh backend is available"
         };
     }
 

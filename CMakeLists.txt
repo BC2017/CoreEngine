@@ -62,10 +62,11 @@ add_library(HFEngineCore STATIC
     src/Engine/Platform/Win32Window.cpp
     src/Engine/Renderer/FrameGraph.cpp
     src/Engine/RHI/BackendFactory.cpp
-    src/Engine/RHI/DX12/DX12TriangleRenderer.cpp
+    src/Engine/RHI/DX12/DX12SandboxRenderer.cpp
+    src/Engine/RHI/Pipeline.cpp
     src/Engine/RHI/Resource.cpp
     src/Engine/RHI/RendererBackend.cpp
-    src/Engine/RHI/Vulkan/VulkanTriangleRenderer.cpp
+    src/Engine/RHI/Vulkan/VulkanSandboxRenderer.cpp
     src/Engine/Tools/RuntimeDebugOverlay.cpp
     src/Engine/Core/Version.cpp
 )
@@ -134,41 +135,43 @@ else()
     endif()
 endif()
 
-function(hfengine_compile_triangle_shaders target)
+function(hfengine_compile_mesh_shaders target)
     if(NOT HFENGINE_SLANGC)
         message(FATAL_ERROR "slangc was not found. Install the Vulkan SDK or add slangc to PATH.")
     endif()
 
     add_custom_command(TARGET ${target} POST_BUILD
         COMMAND ${HFENGINE_SLANGC}
-            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.slang
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Mesh.slang
             -entry VSMain
             -profile vs_6_0
             -target dxil
-            -o $<TARGET_FILE_DIR:${target}>/Triangle.vs.dxil
+            -o $<TARGET_FILE_DIR:${target}>/Mesh.vs.dxil
         COMMAND ${HFENGINE_SLANGC}
-            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.slang
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Mesh.slang
             -entry PSMain
             -profile ps_6_0
             -target dxil
-            -o $<TARGET_FILE_DIR:${target}>/Triangle.ps.dxil
+            -o $<TARGET_FILE_DIR:${target}>/Mesh.ps.dxil
         COMMAND ${HFENGINE_SLANGC}
-            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.slang
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Mesh.slang
             -entry VSMain
             -profile glsl_450
             -target spirv
-            -o $<TARGET_FILE_DIR:${target}>/Triangle.vert.spv
+            -DHFENGINE_VULKAN
+            -o $<TARGET_FILE_DIR:${target}>/Mesh.vert.spv
         COMMAND ${HFENGINE_SLANGC}
-            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.slang
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Mesh.slang
             -entry PSMain
             -profile glsl_450
             -target spirv
-            -o $<TARGET_FILE_DIR:${target}>/Triangle.frag.spv
+            -DHFENGINE_VULKAN
+            -o $<TARGET_FILE_DIR:${target}>/Mesh.frag.spv
         VERBATIM
     )
 endfunction()
 
-hfengine_compile_triangle_shaders(HFEngineSandbox)
+hfengine_compile_mesh_shaders(HFEngineSandbox)
 
 if(HFENGINE_BUILD_TESTS)
     enable_testing()
@@ -218,5 +221,5 @@ if(HFENGINE_BUILD_TESTS)
         tests/integration/RhiGpuSmokeTests.cpp
     )
 
-    hfengine_compile_triangle_shaders(HFEngineGpuSmokeTests)
+    hfengine_compile_mesh_shaders(HFEngineGpuSmokeTests)
 endif()

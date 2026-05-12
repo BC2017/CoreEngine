@@ -1,4 +1,4 @@
-#include "Engine/RHI/DX12/DX12TriangleRenderer.hpp"
+#include "Engine/RHI/DX12/DX12SandboxRenderer.hpp"
 
 #include "Engine/RHI/RendererBackend.hpp"
 #include "Engine/Tools/RuntimeDebugOverlay.hpp"
@@ -14,9 +14,11 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -28,6 +30,49 @@ namespace HFEngine::RHI::DX12
     namespace
     {
         constexpr UINT FrameCount = 2;
+        constexpr DXGI_FORMAT DepthFormat = DXGI_FORMAT_D32_FLOAT;
+
+        struct MeshVertex
+        {
+            float position[3];
+            float color[4];
+        };
+
+        constexpr std::array<MeshVertex, 24> CubeVertices{
+            MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
+            MeshVertex{ { 0.5f, -0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
+            MeshVertex{ { 0.5f, 0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
+            MeshVertex{ { -0.5f, 0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
+            MeshVertex{ { 0.5f, -0.5f, -0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.5f, -0.5f, 0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.5f, 0.5f, 0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.5f, 0.5f, -0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
+            MeshVertex{ { -0.5f, 0.5f, -0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
+            MeshVertex{ { 0.5f, 0.5f, -0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
+            MeshVertex{ { 0.5f, 0.5f, 0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
+            MeshVertex{ { -0.5f, 0.5f, 0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
+            MeshVertex{ { -0.5f, -0.5f, 0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
+            MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
+            MeshVertex{ { -0.5f, 0.5f, -0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
+            MeshVertex{ { -0.5f, 0.5f, 0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
+            MeshVertex{ { -0.5f, -0.5f, 0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.5f, -0.5f, 0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.5f, -0.5f, -0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
+            MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.5f, -0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
+            MeshVertex{ { -0.5f, -0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
+            MeshVertex{ { -0.5f, 0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
+            MeshVertex{ { 0.5f, 0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
+        };
+
+        constexpr std::array<std::uint16_t, 36> CubeIndices{
+            0, 1, 2, 0, 2, 3,
+            4, 5, 6, 4, 6, 7,
+            8, 9, 10, 8, 10, 11,
+            12, 13, 14, 12, 14, 15,
+            16, 17, 18, 16, 18, 19,
+            20, 21, 22, 20, 22, 23,
+        };
 
         std::string ToUtf8(const wchar_t* text)
         {
@@ -125,12 +170,18 @@ namespace HFEngine::RHI::DX12
             ComPtr<ID3D12CommandQueue> commandQueue;
             ComPtr<IDXGISwapChain3> swapchain;
             ComPtr<ID3D12DescriptorHeap> rtvHeap;
+            ComPtr<ID3D12DescriptorHeap> dsvHeap;
             ComPtr<ID3D12DescriptorHeap> imguiSrvHeap;
             ComPtr<ID3D12Resource> renderTargets[FrameCount];
+            ComPtr<ID3D12Resource> depthStencil;
             ComPtr<ID3D12CommandAllocator> commandAllocator;
             ComPtr<ID3D12RootSignature> rootSignature;
             ComPtr<ID3D12PipelineState> pipelineState;
             ComPtr<ID3D12GraphicsCommandList> commandList;
+            ComPtr<ID3D12Resource> vertexBuffer;
+            ComPtr<ID3D12Resource> indexBuffer;
+            D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+            D3D12_INDEX_BUFFER_VIEW indexBufferView{};
             ComPtr<ID3D12Fence> fence;
             HANDLE fenceEvent = nullptr;
             UINT rtvDescriptorSize = 0;
@@ -304,6 +355,17 @@ namespace HFEngine::RHI::DX12
                 return false;
             }
 
+            D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
+            dsvHeapDesc.NumDescriptors = 1;
+            dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+            if (!Succeeded(
+                    state.device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&state.dsvHeap)),
+                    message,
+                    "CreateDescriptorHeap(DSV)"))
+            {
+                return false;
+            }
+
             D3D12_DESCRIPTOR_HEAP_DESC imguiHeapDesc{};
             imguiHeapDesc.NumDescriptors = 1;
             imguiHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -361,7 +423,7 @@ namespace HFEngine::RHI::DX12
             initInfo.CommandQueue = state.commandQueue.Get();
             initInfo.NumFramesInFlight = FrameCount;
             initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-            initInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
+            initInfo.DSVFormat = DepthFormat;
             initInfo.UserData = &state;
             initInfo.SrvDescriptorHeap = state.imguiSrvHeap.Get();
             initInfo.SrvDescriptorAllocFn = AllocateImGuiDescriptor;
@@ -419,29 +481,37 @@ namespace HFEngine::RHI::DX12
             }
 
             const std::string shaderDir = ExecutableDirectory();
-            const std::vector<std::uint8_t> vertexShader = ReadBinary(shaderDir + "\\Triangle.vs.dxil");
-            const std::vector<std::uint8_t> pixelShader = ReadBinary(shaderDir + "\\Triangle.ps.dxil");
+            const std::vector<std::uint8_t> vertexShader = ReadBinary(shaderDir + "\\Mesh.vs.dxil");
+            const std::vector<std::uint8_t> pixelShader = ReadBinary(shaderDir + "\\Mesh.ps.dxil");
             if (vertexShader.empty() || pixelShader.empty())
             {
                 message = "DXIL shader file is missing or empty";
                 return false;
             }
 
+            constexpr D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+                { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+                { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            };
+
             D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
-            pipelineDesc.InputLayout = { nullptr, 0 };
+            pipelineDesc.InputLayout = { inputLayout, 2 };
             pipelineDesc.pRootSignature = state.rootSignature.Get();
             pipelineDesc.VS = { vertexShader.data(), vertexShader.size() };
             pipelineDesc.PS = { pixelShader.data(), pixelShader.size() };
             pipelineDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-            pipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+            pipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
             pipelineDesc.RasterizerState.DepthClipEnable = TRUE;
             pipelineDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-            pipelineDesc.DepthStencilState.DepthEnable = FALSE;
+            pipelineDesc.DepthStencilState.DepthEnable = TRUE;
+            pipelineDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+            pipelineDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
             pipelineDesc.DepthStencilState.StencilEnable = FALSE;
             pipelineDesc.SampleMask = UINT_MAX;
             pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
             pipelineDesc.NumRenderTargets = 1;
             pipelineDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+            pipelineDesc.DSVFormat = DepthFormat;
             pipelineDesc.SampleDesc.Count = 1;
 
             if (!Succeeded(
@@ -469,8 +539,111 @@ namespace HFEngine::RHI::DX12
             return true;
         }
 
-        bool InitializeAssets(Dx12State& state, std::string& message)
+        bool InitializeAssets(Dx12State& state, Platform::Win32Window& window, std::string& message)
         {
+            D3D12_HEAP_PROPERTIES uploadHeap{};
+            uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+            D3D12_RESOURCE_DESC vertexBufferDesc{};
+            vertexBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+            vertexBufferDesc.Width = sizeof(MeshVertex) * CubeVertices.size();
+            vertexBufferDesc.Height = 1;
+            vertexBufferDesc.DepthOrArraySize = 1;
+            vertexBufferDesc.MipLevels = 1;
+            vertexBufferDesc.SampleDesc.Count = 1;
+            vertexBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+            if (!Succeeded(
+                    state.device->CreateCommittedResource(
+                        &uploadHeap,
+                        D3D12_HEAP_FLAG_NONE,
+                        &vertexBufferDesc,
+                        D3D12_RESOURCE_STATE_GENERIC_READ,
+                        nullptr,
+                        IID_PPV_ARGS(&state.vertexBuffer)),
+                    message,
+                    "CreateCommittedResource(vertex buffer)"))
+            {
+                return false;
+            }
+
+            void* mappedData = nullptr;
+            D3D12_RANGE readRange{ 0, 0 };
+            if (!Succeeded(state.vertexBuffer->Map(0, &readRange, &mappedData), message, "Map(vertex buffer)"))
+            {
+                return false;
+            }
+            std::memcpy(mappedData, CubeVertices.data(), sizeof(MeshVertex) * CubeVertices.size());
+            state.vertexBuffer->Unmap(0, nullptr);
+
+            state.vertexBufferView.BufferLocation = state.vertexBuffer->GetGPUVirtualAddress();
+            state.vertexBufferView.StrideInBytes = sizeof(MeshVertex);
+            state.vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(MeshVertex) * CubeVertices.size());
+
+            D3D12_RESOURCE_DESC indexBufferDesc = vertexBufferDesc;
+            indexBufferDesc.Width = sizeof(std::uint16_t) * CubeIndices.size();
+            if (!Succeeded(
+                    state.device->CreateCommittedResource(
+                        &uploadHeap,
+                        D3D12_HEAP_FLAG_NONE,
+                        &indexBufferDesc,
+                        D3D12_RESOURCE_STATE_GENERIC_READ,
+                        nullptr,
+                        IID_PPV_ARGS(&state.indexBuffer)),
+                    message,
+                    "CreateCommittedResource(index buffer)"))
+            {
+                return false;
+            }
+
+            mappedData = nullptr;
+            if (!Succeeded(state.indexBuffer->Map(0, &readRange, &mappedData), message, "Map(index buffer)"))
+            {
+                return false;
+            }
+            std::memcpy(mappedData, CubeIndices.data(), sizeof(std::uint16_t) * CubeIndices.size());
+            state.indexBuffer->Unmap(0, nullptr);
+
+            state.indexBufferView.BufferLocation = state.indexBuffer->GetGPUVirtualAddress();
+            state.indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+            state.indexBufferView.SizeInBytes = static_cast<UINT>(sizeof(std::uint16_t) * CubeIndices.size());
+
+            D3D12_HEAP_PROPERTIES defaultHeap{};
+            defaultHeap.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+            D3D12_RESOURCE_DESC depthDesc{};
+            depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+            depthDesc.Width = window.Width();
+            depthDesc.Height = window.Height();
+            depthDesc.DepthOrArraySize = 1;
+            depthDesc.MipLevels = 1;
+            depthDesc.Format = DepthFormat;
+            depthDesc.SampleDesc.Count = 1;
+            depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+            D3D12_CLEAR_VALUE depthClear{};
+            depthClear.Format = DepthFormat;
+            depthClear.DepthStencil.Depth = 1.0f;
+
+            if (!Succeeded(
+                    state.device->CreateCommittedResource(
+                        &defaultHeap,
+                        D3D12_HEAP_FLAG_NONE,
+                        &depthDesc,
+                        D3D12_RESOURCE_STATE_DEPTH_WRITE,
+                        &depthClear,
+                        IID_PPV_ARGS(&state.depthStencil)),
+                    message,
+                    "CreateCommittedResource(depth stencil)"))
+            {
+                return false;
+            }
+
+            state.device->CreateDepthStencilView(
+                state.depthStencil.Get(),
+                nullptr,
+                state.dsvHeap->GetCPUDescriptorHandleForHeapStart());
+
             if (!Succeeded(state.device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&state.fence)), message, "CreateFence"))
             {
                 return false;
@@ -550,12 +723,16 @@ namespace HFEngine::RHI::DX12
 
             D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = state.rtvHeap->GetCPUDescriptorHandleForHeapStart();
             rtvHandle.ptr += static_cast<SIZE_T>(state.frameIndex) * state.rtvDescriptorSize;
+            D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = state.dsvHeap->GetCPUDescriptorHandleForHeapStart();
 
             constexpr float clearColor[] = { 0.025f, 0.035f, 0.055f, 1.0f };
-            state.commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+            state.commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
             state.commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+            state.commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
             state.commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            state.commandList->DrawInstanced(3, 1, 0, 0);
+            state.commandList->IASetVertexBuffers(0, 1, &state.vertexBufferView);
+            state.commandList->IASetIndexBuffer(&state.indexBufferView);
+            state.commandList->DrawIndexedInstanced(static_cast<UINT>(CubeIndices.size()), 1, 0, 0, 0);
 
             ImGui_ImplDX12_NewFrame();
             ImGui_ImplWin32_NewFrame();
@@ -596,14 +773,14 @@ namespace HFEngine::RHI::DX12
         }
     }
 
-    TriangleRunResult RunTriangleSandbox(const Core::EngineConfig& config, Platform::Win32Window& window)
+    SandboxRenderResult RunSandboxRenderer(const Core::EngineConfig& config, Platform::Win32Window& window)
     {
-        TriangleRunResult result;
+        SandboxRenderResult result;
 
         Dx12State state;
         if (!InitializeDevice(config, window, state, result.message) ||
             !InitializePipeline(state, result.message) ||
-            !InitializeAssets(state, result.message) ||
+            !InitializeAssets(state, window, result.message) ||
             !InitializeImGui(config, window, state, result.message))
         {
             ShutdownImGui();

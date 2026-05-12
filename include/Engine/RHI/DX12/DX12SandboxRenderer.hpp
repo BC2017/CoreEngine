@@ -7,7 +7,7 @@
 
 namespace HFEngine::RHI::DX12
 {
-    struct TriangleRunResult
+    struct SandboxRenderResult
     {
         bool success = false;
         std::string message;
@@ -15,7 +15,7 @@ namespace HFEngine::RHI::DX12
         unsigned int framesRendered = 0;
     };
 
-    [[nodiscard]] TriangleRunResult RunTriangleSandbox(
+    [[nodiscard]] SandboxRenderResult RunSandboxRenderer(
         const Core::EngineConfig& config,
         Platform::Win32Window& window);
 }

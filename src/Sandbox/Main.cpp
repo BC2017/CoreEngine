@@ -3,9 +3,9 @@
 #include "Engine/Core/Version.hpp"
 #include "Engine/Platform/Win32Window.hpp"
 #include "Engine/RHI/BackendFactory.hpp"
-#include "Engine/RHI/DX12/DX12TriangleRenderer.hpp"
+#include "Engine/RHI/DX12/DX12SandboxRenderer.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
-#include "Engine/RHI/Vulkan/VulkanTriangleRenderer.hpp"
+#include "Engine/RHI/Vulkan/VulkanSandboxRenderer.hpp"
 
 #include <iostream>
 
@@ -51,14 +51,14 @@ int main(int argc, char** argv)
     std::cout << "Backend implementation status: "
               << (availability.runtimeAvailable ? "available" : availability.reason) << '\n';
     std::cout << "Backend switching: launch-time via --renderer dx12|vulkan\n";
-    std::cout << "First visible milestone: render the same triangle through both backends\n";
+    std::cout << "Current visible milestone: render the same indexed cube mesh through both backends\n";
     std::cout << "Runtime/debug tooling planned before full editor: ImGui backend/status overlay\n";
 
     if (runtime.Backend() == HFEngine::RHI::RendererBackend::DirectX12)
     {
         HFEngine::Platform::Win32Window window;
         HFEngine::Platform::WindowDesc windowDesc;
-        windowDesc.title = L"HFEngine - DirectX 12 Triangle";
+        windowDesc.title = L"HFEngine - DirectX 12 Mesh";
 
         if (!window.Create(windowDesc))
         {
@@ -67,23 +67,23 @@ int main(int argc, char** argv)
             return 1;
         }
 
-        const HFEngine::RHI::DX12::TriangleRunResult triangle =
-            HFEngine::RHI::DX12::RunTriangleSandbox(commandLine.config, window);
-        if (!triangle.success)
+        const HFEngine::RHI::DX12::SandboxRenderResult render =
+            HFEngine::RHI::DX12::RunSandboxRenderer(commandLine.config, window);
+        if (!render.success)
         {
-            std::cerr << "DX12 triangle failed: " << triangle.message << '\n';
+            std::cerr << "DX12 mesh render failed: " << render.message << '\n';
             runtime.Shutdown();
             return 1;
         }
 
-        std::cout << "DX12 adapter: " << triangle.adapterName << '\n';
-        std::cout << "DX12 frames rendered: " << triangle.framesRendered << '\n';
+        std::cout << "DX12 adapter: " << render.adapterName << '\n';
+        std::cout << "DX12 frames rendered: " << render.framesRendered << '\n';
     }
     else if (runtime.Backend() == HFEngine::RHI::RendererBackend::Vulkan)
     {
         HFEngine::Platform::Win32Window window;
         HFEngine::Platform::WindowDesc windowDesc;
-        windowDesc.title = L"HFEngine - Vulkan Triangle";
+        windowDesc.title = L"HFEngine - Vulkan Mesh";
 
         if (!window.Create(windowDesc))
         {
@@ -92,17 +92,17 @@ int main(int argc, char** argv)
             return 1;
         }
 
-        const HFEngine::RHI::Vulkan::TriangleRunResult triangle =
-            HFEngine::RHI::Vulkan::RunTriangleSandbox(commandLine.config, window);
-        if (!triangle.success)
+        const HFEngine::RHI::Vulkan::SandboxRenderResult render =
+            HFEngine::RHI::Vulkan::RunSandboxRenderer(commandLine.config, window);
+        if (!render.success)
         {
-            std::cerr << "Vulkan triangle failed: " << triangle.message << '\n';
+            std::cerr << "Vulkan mesh render failed: " << render.message << '\n';
             runtime.Shutdown();
             return 1;
         }
 
-        std::cout << "Vulkan adapter: " << triangle.adapterName << '\n';
-        std::cout << "Vulkan frames rendered: " << triangle.framesRendered << '\n';
+        std::cout << "Vulkan adapter: " << render.adapterName << '\n';
+        std::cout << "Vulkan frames rendered: " << render.framesRendered << '\n';
     }
     else
     {

@@ -57,8 +57,10 @@ cmake --build --preset vs-debug
 
 The current runnable target is the sandbox executable. It verifies that the
 engine core can initialize and shut down cleanly with a selected renderer
-backend. The triangle shader is authored once in Slang and compiled during the
-build to DXIL for DirectX 12 and SPIR-V for Vulkan.
+backend. The mesh shader is authored once in Slang and compiled during the
+build to DXIL for DirectX 12 and SPIR-V for Vulkan. The sandbox currently
+renders a small indexed colored cube so both backends exercise vertex buffers,
+index buffers, depth testing, and the ImGui overlay.
 
 After building Debug with Visual Studio:
 
