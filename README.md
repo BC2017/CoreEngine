@@ -62,11 +62,19 @@ Select DirectX 12:
 .\build\Debug\HFEngineSandbox.exe --renderer dx12
 ```
 
+Render a bounded number of DX12 frames for automation:
+
+```powershell
+.\build\Debug\HFEngineSandbox.exe --renderer dx12 --frames 3
+```
+
 Select Vulkan:
 
 ```powershell
 .\build\Debug\HFEngineSandbox.exe --renderer vulkan
 ```
+
+Vulkan is the next backend after the DX12 triangle path.
 
 Disable validation diagnostics:
 

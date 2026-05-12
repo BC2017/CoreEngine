@@ -2,6 +2,7 @@
 
 #include "Engine/RHI/RendererBackend.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -12,6 +13,7 @@ namespace HFEngine::Core
         std::string applicationName = "HFEngine Application";
         bool enableValidation = true;
         RHI::RendererBackend rendererBackend = RHI::RendererBackend::DirectX12;
+        std::uint32_t maxFrames = 0;
     };
 
     struct StartupResult
