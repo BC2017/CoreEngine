@@ -15,6 +15,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+
       - name: Configure
         run: cmake -S . -B build -DHFENGINE_BUILD_TESTS=ON
 
@@ -22,4 +28,4 @@ jobs:
         run: cmake --build build --config Debug
 
       - name: Test
-        run: ctest --test-dir build -C Debug --output-on-failure
+        run: ctest --test-dir build -C Debug -LE gpu --output-on-failure

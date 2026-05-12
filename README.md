@@ -138,8 +138,9 @@ Run GPU smoke tests:
 ctest --test-dir build -C Debug -L gpu --output-on-failure
 ```
 
-The GPU smoke tests currently skip until the concrete DX12 and Vulkan triangle
-backend implementations are added.
+The GPU smoke tests require local graphics runtime support. CI builds the GPU
+code but runs non-GPU tests only because hosted Windows runners do not guarantee
+a Vulkan-capable adapter or ICD.
 
 List registered unit tests:
 
