@@ -43,7 +43,7 @@ Foundation delivered:
 
 Branch: `codex/milestone-4-frame-graph`
 
-Foundation target:
+Foundation delivered:
 
 - Pass/resource declaration.
 - Dependency sorting.

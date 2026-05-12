@@ -17,6 +17,7 @@ add_library(HFEngineCore STATIC
     src/Engine/Core/FileSystem.cpp
     src/Engine/Core/JobSystem.cpp
     src/Engine/Core/Logger.cpp
+    src/Engine/Renderer/FrameGraph.cpp
     src/Engine/RHI/BackendFactory.cpp
     src/Engine/RHI/Resource.cpp
     src/Engine/RHI/RendererBackend.cpp
@@ -107,6 +108,7 @@ if(HFENGINE_BUILD_TESTS)
     hfengine_add_test(HFEngineUnitTests unit
         tests/unit/CoreSystemsTests.cpp
         tests/unit/CoreVersionTests.cpp
+        tests/unit/FrameGraphTests.cpp
         tests/unit/RhiContractTests.cpp
     )
 
