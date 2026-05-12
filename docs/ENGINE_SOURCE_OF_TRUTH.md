@@ -92,8 +92,10 @@ revised.
 - 2026-05-12: Implemented the first shared Slang shader path: one triangle
   shader source compiles to DXIL for DirectX 12 and SPIR-V for Vulkan.
 - 2026-05-12: Promoted the visible GPU smoke path from a shader-generated
-  triangle to an indexed colored cube with vertex buffers, index buffers, and
-  depth testing in both backends.
+  triangle to an indexed colored cube with vertex buffers, index buffers,
+  perspective projection, and depth testing in both backends.
+- 2026-05-12: Renamed remaining triangle-era backend sandbox renderer files and
+  APIs to neutral sandbox renderer names.
 
 ## 4. Architecture Principles
 
@@ -995,13 +997,11 @@ samples/
 
 ## 13. Immediate Next Steps
 
-1. Rename the remaining triangle-era sandbox renderer entrypoint files/APIs to
-   neutral mesh or sandbox renderer names.
-2. Move backend shader module and graphics pipeline creation behind the public
+1. Move backend shader module and graphics pipeline creation behind the public
    RHI descriptors.
-3. Add EnTT as a git submodule and establish ECS wrapper boundaries.
-4. Add coding standards and formatting configuration.
-5. Add CI formatting or static-analysis gates after style rules are locked.
+2. Add EnTT as a git submodule and establish ECS wrapper boundaries.
+3. Add coding standards and formatting configuration.
+4. Add CI formatting or static-analysis gates after style rules are locked.
 
 ## 14. Open Questions
 

@@ -3,9 +3,9 @@
 #include "Engine/Core/Version.hpp"
 #include "Engine/Platform/Win32Window.hpp"
 #include "Engine/RHI/BackendFactory.hpp"
-#include "Engine/RHI/DX12/DX12TriangleRenderer.hpp"
+#include "Engine/RHI/DX12/DX12SandboxRenderer.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
-#include "Engine/RHI/Vulkan/VulkanTriangleRenderer.hpp"
+#include "Engine/RHI/Vulkan/VulkanSandboxRenderer.hpp"
 
 #include <iostream>
 
@@ -67,17 +67,17 @@ int main(int argc, char** argv)
             return 1;
         }
 
-        const HFEngine::RHI::DX12::TriangleRunResult triangle =
-            HFEngine::RHI::DX12::RunTriangleSandbox(commandLine.config, window);
-        if (!triangle.success)
+        const HFEngine::RHI::DX12::SandboxRenderResult render =
+            HFEngine::RHI::DX12::RunSandboxRenderer(commandLine.config, window);
+        if (!render.success)
         {
-            std::cerr << "DX12 mesh render failed: " << triangle.message << '\n';
+            std::cerr << "DX12 mesh render failed: " << render.message << '\n';
             runtime.Shutdown();
             return 1;
         }
 
-        std::cout << "DX12 adapter: " << triangle.adapterName << '\n';
-        std::cout << "DX12 frames rendered: " << triangle.framesRendered << '\n';
+        std::cout << "DX12 adapter: " << render.adapterName << '\n';
+        std::cout << "DX12 frames rendered: " << render.framesRendered << '\n';
     }
     else if (runtime.Backend() == HFEngine::RHI::RendererBackend::Vulkan)
     {
@@ -92,17 +92,17 @@ int main(int argc, char** argv)
             return 1;
         }
 
-        const HFEngine::RHI::Vulkan::TriangleRunResult triangle =
-            HFEngine::RHI::Vulkan::RunTriangleSandbox(commandLine.config, window);
-        if (!triangle.success)
+        const HFEngine::RHI::Vulkan::SandboxRenderResult render =
+            HFEngine::RHI::Vulkan::RunSandboxRenderer(commandLine.config, window);
+        if (!render.success)
         {
-            std::cerr << "Vulkan mesh render failed: " << triangle.message << '\n';
+            std::cerr << "Vulkan mesh render failed: " << render.message << '\n';
             runtime.Shutdown();
             return 1;
         }
 
-        std::cout << "Vulkan adapter: " << triangle.adapterName << '\n';
-        std::cout << "Vulkan frames rendered: " << triangle.framesRendered << '\n';
+        std::cout << "Vulkan adapter: " << render.adapterName << '\n';
+        std::cout << "Vulkan frames rendered: " << render.framesRendered << '\n';
     }
     else
     {

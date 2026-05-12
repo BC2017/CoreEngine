@@ -1,9 +1,9 @@
 #include "Engine/RHI/BackendFactory.hpp"
 #include "Engine/Core/Engine.hpp"
 #include "Engine/Platform/Win32Window.hpp"
-#include "Engine/RHI/DX12/DX12TriangleRenderer.hpp"
+#include "Engine/RHI/DX12/DX12SandboxRenderer.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
-#include "Engine/RHI/Vulkan/VulkanTriangleRenderer.hpp"
+#include "Engine/RHI/Vulkan/VulkanSandboxRenderer.hpp"
 #include "TestHarness.hpp"
 
 #include <iostream>
@@ -44,8 +44,8 @@ HFENGINE_TEST_CASE("gpu.rhi.dx12", "CreatesDeviceSwapchainAndSubmitsIndexedMeshF
     config.enableValidation = false;
     config.maxFrames = 1;
 
-    const HFEngine::RHI::DX12::TriangleRunResult result =
-        HFEngine::RHI::DX12::RunTriangleSandbox(config, window);
+    const HFEngine::RHI::DX12::SandboxRenderResult result =
+        HFEngine::RHI::DX12::RunSandboxRenderer(config, window);
 
     HFENGINE_REQUIRE(result.success);
     HFENGINE_REQUIRE(result.framesRendered == 1);
@@ -70,8 +70,8 @@ HFENGINE_TEST_CASE("gpu.rhi.vulkan", "CreatesDeviceSwapchainAndSubmitsIndexedMes
     config.enableValidation = false;
     config.maxFrames = 1;
 
-    const HFEngine::RHI::Vulkan::TriangleRunResult result =
-        HFEngine::RHI::Vulkan::RunTriangleSandbox(config, window);
+    const HFEngine::RHI::Vulkan::SandboxRenderResult result =
+        HFEngine::RHI::Vulkan::RunSandboxRenderer(config, window);
 
     HFENGINE_REQUIRE(result.success);
     HFENGINE_REQUIRE(result.framesRendered == 1);

@@ -82,7 +82,7 @@ Foundation delivered:
 - Dear ImGui submodule.
 - Shared runtime debug overlay data model and panel.
 - Win32 ImGui input forwarding.
-- DX12 and Vulkan overlay rendering in the triangle sandbox.
+- DX12 and Vulkan overlay rendering in the sandbox renderer.
 - CI submodule checkout.
 
 Next target:
@@ -95,13 +95,13 @@ Branch: `codex/slang-shader-pipeline`
 
 Foundation delivered:
 
-- Single Slang triangle shader source.
+- Single Slang mesh shader source.
 - Build-time Slang compilation to DXIL for DirectX 12.
 - Build-time Slang compilation to SPIR-V for Vulkan.
 - DX12 runtime loading of compiled DXIL instead of embedded `D3DCompile`
   source.
-- DX12 and Vulkan triangle paths both draw from `SV_VertexID`, keeping the first
-  visible shader path backend-neutral.
+- DX12 and Vulkan shader paths started from shared source and now feed the
+  sandbox mesh renderer.
 
 Next target:
 
@@ -123,12 +123,12 @@ Foundation delivered:
   depth render pass attachment, and depth-tested draw submission.
 - GPU smoke tests now exercise an indexed mesh frame instead of only a
   shader-generated triangle.
+- DX12 and Vulkan sandbox renderer files/APIs use neutral names instead of
+  triangle-era names.
 
 Next target:
 
-- Rename the remaining triangle-era sandbox entrypoint files/APIs into neutral
-  sandbox renderer names and start moving shader/pipeline creation behind the
-  public RHI descriptors.
+- Start moving shader/pipeline creation behind the public RHI descriptors.
 
 ## Milestone 4: Frame Graph
 

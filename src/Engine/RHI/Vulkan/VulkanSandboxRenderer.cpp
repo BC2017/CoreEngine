@@ -1,4 +1,4 @@
-#include "Engine/RHI/Vulkan/VulkanTriangleRenderer.hpp"
+#include "Engine/RHI/Vulkan/VulkanSandboxRenderer.hpp"
 
 #include "Engine/Tools/RuntimeDebugOverlay.hpp"
 
@@ -1081,9 +1081,9 @@ namespace HFEngine::RHI::Vulkan
         }
     }
 
-    TriangleRunResult RunTriangleSandbox(const Core::EngineConfig& config, Platform::Win32Window& window)
+    SandboxRenderResult RunSandboxRenderer(const Core::EngineConfig& config, Platform::Win32Window& window)
     {
-        TriangleRunResult result;
+        SandboxRenderResult result;
 
         VulkanState state;
         if (!Initialize(state, window, result.message) ||

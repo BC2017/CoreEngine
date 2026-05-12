@@ -1,4 +1,4 @@
-#include "Engine/RHI/DX12/DX12TriangleRenderer.hpp"
+#include "Engine/RHI/DX12/DX12SandboxRenderer.hpp"
 
 #include "Engine/RHI/RendererBackend.hpp"
 #include "Engine/Tools/RuntimeDebugOverlay.hpp"
@@ -773,9 +773,9 @@ namespace HFEngine::RHI::DX12
         }
     }
 
-    TriangleRunResult RunTriangleSandbox(const Core::EngineConfig& config, Platform::Win32Window& window)
+    SandboxRenderResult RunSandboxRenderer(const Core::EngineConfig& config, Platform::Win32Window& window)
     {
-        TriangleRunResult result;
+        SandboxRenderResult result;
 
         Dx12State state;
         if (!InitializeDevice(config, window, state, result.message) ||

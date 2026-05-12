@@ -62,11 +62,11 @@ add_library(HFEngineCore STATIC
     src/Engine/Platform/Win32Window.cpp
     src/Engine/Renderer/FrameGraph.cpp
     src/Engine/RHI/BackendFactory.cpp
-    src/Engine/RHI/DX12/DX12TriangleRenderer.cpp
+    src/Engine/RHI/DX12/DX12SandboxRenderer.cpp
     src/Engine/RHI/Pipeline.cpp
     src/Engine/RHI/Resource.cpp
     src/Engine/RHI/RendererBackend.cpp
-    src/Engine/RHI/Vulkan/VulkanTriangleRenderer.cpp
+    src/Engine/RHI/Vulkan/VulkanSandboxRenderer.cpp
     src/Engine/Tools/RuntimeDebugOverlay.cpp
     src/Engine/Core/Version.cpp
 )
