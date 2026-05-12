@@ -73,6 +73,22 @@ Foundation delivered:
 Note: GLSL/SPIR-V is used only for the Vulkan bootstrap path. Shared Slang
 compilation remains the planned shader path for production rendering.
 
+## Runtime Debug Overlay
+
+Branch: `codex/runtime-debug-shader-foundation`
+
+Foundation delivered:
+
+- Dear ImGui submodule.
+- Shared runtime debug overlay data model and panel.
+- Win32 ImGui input forwarding.
+- DX12 and Vulkan overlay rendering in the triangle sandbox.
+- CI submodule checkout.
+
+Next target:
+
+- Replace bootstrap shader compilation with the planned Slang DXIL/SPIR-V path.
+
 ## Milestone 4: Frame Graph
 
 Branch: `codex/milestone-4-frame-graph`

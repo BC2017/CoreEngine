@@ -10,6 +10,6 @@ CMakeUserPresets.json
 .vscode/
 *.user
 *.suo
+imgui.ini
 Thumbs.db
 Desktop.ini
-

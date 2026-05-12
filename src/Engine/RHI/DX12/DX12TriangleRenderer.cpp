@@ -1,6 +1,11 @@
 #include "Engine/RHI/DX12/DX12TriangleRenderer.hpp"
 
 #include "Engine/RHI/RendererBackend.hpp"
+#include "Engine/Tools/RuntimeDebugOverlay.hpp"
+
+#include "imgui.h"
+#include "imgui_impl_dx12.h"
+#include "imgui_impl_win32.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -119,6 +124,7 @@ float4 PSMain(PSInput input) : SV_TARGET
             ComPtr<ID3D12CommandQueue> commandQueue;
             ComPtr<IDXGISwapChain3> swapchain;
             ComPtr<ID3D12DescriptorHeap> rtvHeap;
+            ComPtr<ID3D12DescriptorHeap> imguiSrvHeap;
             ComPtr<ID3D12Resource> renderTargets[FrameCount];
             ComPtr<ID3D12CommandAllocator> commandAllocator;
             ComPtr<ID3D12RootSignature> rootSignature;
@@ -132,6 +138,7 @@ float4 PSMain(PSInput input) : SV_TARGET
             UINT frameIndex = 0;
             UINT64 fenceValue = 0;
             std::string adapterName;
+            bool imguiDescriptorAllocated = false;
 
             ~Dx12State()
             {
@@ -141,6 +148,26 @@ float4 PSMain(PSInput input) : SV_TARGET
                 }
             }
         };
+
+        void AllocateImGuiDescriptor(
+            ImGui_ImplDX12_InitInfo* info,
+            D3D12_CPU_DESCRIPTOR_HANDLE* outCpuDescHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE* outGpuDescHandle)
+        {
+            auto* state = static_cast<Dx12State*>(info->UserData);
+            state->imguiDescriptorAllocated = true;
+            *outCpuDescHandle = state->imguiSrvHeap->GetCPUDescriptorHandleForHeapStart();
+            *outGpuDescHandle = state->imguiSrvHeap->GetGPUDescriptorHandleForHeapStart();
+        }
+
+        void FreeImGuiDescriptor(
+            ImGui_ImplDX12_InitInfo* info,
+            D3D12_CPU_DESCRIPTOR_HANDLE,
+            D3D12_GPU_DESCRIPTOR_HANDLE)
+        {
+            auto* state = static_cast<Dx12State*>(info->UserData);
+            state->imguiDescriptorAllocated = false;
+        }
 
         bool EnableDebugLayerIfRequested(bool enabled, std::string& message)
         {
@@ -278,6 +305,18 @@ float4 PSMain(PSInput input) : SV_TARGET
                 return false;
             }
 
+            D3D12_DESCRIPTOR_HEAP_DESC imguiHeapDesc{};
+            imguiHeapDesc.NumDescriptors = 1;
+            imguiHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            imguiHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+            if (!Succeeded(
+                    state.device->CreateDescriptorHeap(&imguiHeapDesc, IID_PPV_ARGS(&state.imguiSrvHeap)),
+                    message,
+                    "CreateDescriptorHeap(ImGui SRV)"))
+            {
+                return false;
+            }
+
             state.rtvDescriptorSize = state.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
             D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = state.rtvHeap->GetCPUDescriptorHandleForHeapStart();
             for (UINT frame = 0; frame < FrameCount; ++frame)
@@ -304,6 +343,50 @@ float4 PSMain(PSInput input) : SV_TARGET
             }
 
             return true;
+        }
+
+        bool InitializeImGui(const Core::EngineConfig& config, Platform::Win32Window& window, Dx12State& state, std::string& message)
+        {
+            IMGUI_CHECKVERSION();
+            ImGui::CreateContext();
+            ImGui::StyleColorsDark();
+
+            if (!ImGui_ImplWin32_Init(static_cast<HWND>(window.NativeHandle())))
+            {
+                message = "ImGui_ImplWin32_Init failed";
+                return false;
+            }
+
+            ImGui_ImplDX12_InitInfo initInfo;
+            initInfo.Device = state.device.Get();
+            initInfo.CommandQueue = state.commandQueue.Get();
+            initInfo.NumFramesInFlight = FrameCount;
+            initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+            initInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
+            initInfo.UserData = &state;
+            initInfo.SrvDescriptorHeap = state.imguiSrvHeap.Get();
+            initInfo.SrvDescriptorAllocFn = AllocateImGuiDescriptor;
+            initInfo.SrvDescriptorFreeFn = FreeImGuiDescriptor;
+
+            if (!ImGui_ImplDX12_Init(&initInfo))
+            {
+                message = "ImGui_ImplDX12_Init failed";
+                return false;
+            }
+
+            ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+            (void)config;
+            return true;
+        }
+
+        void ShutdownImGui()
+        {
+            if (ImGui::GetCurrentContext() != nullptr)
+            {
+                ImGui_ImplDX12_Shutdown();
+                ImGui_ImplWin32_Shutdown();
+                ImGui::DestroyContext();
+            }
         }
 
         bool InitializePipeline(Dx12State& state, std::string& message)
@@ -521,7 +604,12 @@ float4 PSMain(PSInput input) : SV_TARGET
             return true;
         }
 
-        bool RenderFrame(Dx12State& state, Platform::Win32Window& window, std::string& message)
+        bool RenderFrame(
+            const Core::EngineConfig& config,
+            Dx12State& state,
+            Platform::Win32Window& window,
+            unsigned int framesRendered,
+            std::string& message)
         {
             if (!Succeeded(state.commandAllocator->Reset(), message, "CommandAllocator::Reset"))
             {
@@ -563,6 +651,22 @@ float4 PSMain(PSInput input) : SV_TARGET
             state.commandList->IASetVertexBuffers(0, 1, &state.vertexBufferView);
             state.commandList->DrawInstanced(3, 1, 0, 0);
 
+            ImGui_ImplDX12_NewFrame();
+            ImGui_ImplWin32_NewFrame();
+            ImGui::NewFrame();
+            Tools::DrawRuntimeDebugOverlay({
+                "DirectX 12",
+                state.adapterName,
+                config.enableValidation,
+                framesRendered,
+                0.0f,
+            });
+            ImGui::Render();
+
+            ID3D12DescriptorHeap* descriptorHeaps[] = { state.imguiSrvHeap.Get() };
+            state.commandList->SetDescriptorHeaps(1, descriptorHeaps);
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), state.commandList.Get());
+
             Transition(
                 state.commandList.Get(),
                 state.renderTargets[state.frameIndex].Get(),
@@ -593,8 +697,10 @@ float4 PSMain(PSInput input) : SV_TARGET
         Dx12State state;
         if (!InitializeDevice(config, window, state, result.message) ||
             !InitializePipeline(state, result.message) ||
-            !InitializeAssets(state, result.message))
+            !InitializeAssets(state, result.message) ||
+            !InitializeImGui(config, window, state, result.message))
         {
+            ShutdownImGui();
             return result;
         }
 
@@ -602,8 +708,9 @@ float4 PSMain(PSInput input) : SV_TARGET
 
         while (window.PumpMessages())
         {
-            if (!RenderFrame(state, window, result.message))
+            if (!RenderFrame(config, state, window, result.framesRendered, result.message))
             {
+                ShutdownImGui();
                 return result;
             }
 
@@ -616,9 +723,11 @@ float4 PSMain(PSInput input) : SV_TARGET
 
         if (!WaitForGpu(state, result.message))
         {
+            ShutdownImGui();
             return result;
         }
 
+        ShutdownImGui();
         result.success = true;
         result.message = "ok";
         return result;

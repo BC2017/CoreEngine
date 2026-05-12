@@ -4,10 +4,15 @@ Dependencies are added as git submodules under `external/` only when milestone
 code needs them. Planned dependencies that are not yet used stay documented
 rather than vendored.
 
+## Active Submodules
+
+- `external/imgui`: Dear ImGui runtime/debug tooling and future editor UI.
+
 ## Planned Baseline
 
 - EnTT: ECS.
-- Dear ImGui: runtime/debug tooling first, full editor later.
+- Dear ImGui: active submodule for runtime/debug tooling first, full editor
+  later.
 - Slang: shared HLSL-style shader source, DXIL output, SPIR-V output, and
   reflection.
 - Jolt Physics: physics backend.

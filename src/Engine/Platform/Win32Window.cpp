@@ -3,6 +3,11 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
+
 namespace HFEngine::Platform
 {
     namespace
@@ -11,6 +16,11 @@ namespace HFEngine::Platform
 
         LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
         {
+            if (ImGui::GetCurrentContext() != nullptr && ImGui_ImplWin32_WndProcHandler(hwnd, message, wparam, lparam) != 0)
+            {
+                return 1;
+            }
+
             if (message == WM_CLOSE)
             {
                 DestroyWindow(hwnd);
