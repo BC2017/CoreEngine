@@ -56,6 +56,23 @@ Note: the bootstrap DX12 path uses embedded HLSL-style shader source compiled
 through `D3DCompile`. Shared Slang compilation remains the planned shader path
 for the dual-backend milestone.
 
+## Milestone 0.5B: Vulkan Triangle
+
+Branch: `codex/vulkan-triangle-milestone`
+
+Foundation delivered:
+
+- Vulkan SDK build integration.
+- GLSL bootstrap shaders compiled to SPIR-V with `glslc`.
+- Vulkan instance, Win32 surface, physical device selection, logical device,
+  swapchain, render pass, graphics pipeline, framebuffers, command buffer,
+  semaphores, fence, and frame submission.
+- Bounded `--frames` mode for Vulkan automation.
+- GPU smoke test that renders one Vulkan triangle frame.
+
+Note: GLSL/SPIR-V is used only for the Vulkan bootstrap path. Shared Slang
+compilation remains the planned shader path for production rendering.
+
 ## Milestone 4: Frame Graph
 
 Branch: `codex/milestone-4-frame-graph`

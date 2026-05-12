@@ -6,6 +6,8 @@ project(HFEngine
     LANGUAGES CXX
 )
 
+find_program(HFENGINE_GLSLC glslc HINTS "$ENV{VULKAN_SDK}/Bin")
+
 option(HFENGINE_BUILD_TESTS "Build engine tests" ON)
 option(HFENGINE_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
@@ -24,6 +26,7 @@ add_library(HFEngineCore STATIC
     src/Engine/RHI/DX12/DX12TriangleRenderer.cpp
     src/Engine/RHI/Resource.cpp
     src/Engine/RHI/RendererBackend.cpp
+    src/Engine/RHI/Vulkan/VulkanTriangleRenderer.cpp
     src/Engine/Core/Version.cpp
 )
 
@@ -54,11 +57,14 @@ else()
 endif()
 
 if(WIN32)
+    find_package(Vulkan REQUIRED)
+
     target_link_libraries(HFEngineCore
         PUBLIC
             d3d12
             dxgi
             d3dcompiler
+            Vulkan::Vulkan
     )
 endif()
 
@@ -84,6 +90,26 @@ else()
         target_compile_options(HFEngineSandbox PRIVATE -Werror)
     endif()
 endif()
+
+function(hfengine_compile_vulkan_shaders target)
+    if(NOT HFENGINE_GLSLC)
+        message(FATAL_ERROR "glslc was not found. Install the Vulkan SDK or add glslc to PATH.")
+    endif()
+
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${HFENGINE_GLSLC}
+            -fshader-stage=vert
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.vert.glsl
+            -o $<TARGET_FILE_DIR:${target}>/Triangle.vert.spv
+        COMMAND ${HFENGINE_GLSLC}
+            -fshader-stage=frag
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.frag.glsl
+            -o $<TARGET_FILE_DIR:${target}>/Triangle.frag.spv
+        VERBATIM
+    )
+endfunction()
+
+hfengine_compile_vulkan_shaders(HFEngineSandbox)
 
 if(HFENGINE_BUILD_TESTS)
     enable_testing()
@@ -132,4 +158,6 @@ if(HFENGINE_BUILD_TESTS)
     hfengine_add_test(HFEngineGpuSmokeTests gpu
         tests/integration/RhiGpuSmokeTests.cpp
     )
+
+    hfengine_compile_vulkan_shaders(HFEngineGpuSmokeTests)
 endif()

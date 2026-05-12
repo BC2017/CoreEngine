@@ -74,7 +74,11 @@ Select Vulkan:
 .\build\Debug\HFEngineSandbox.exe --renderer vulkan
 ```
 
-Vulkan is the next backend after the DX12 triangle path.
+Render a bounded number of Vulkan frames for automation:
+
+```powershell
+.\build\Debug\HFEngineSandbox.exe --renderer vulkan --frames 3
+```
 
 Disable validation diagnostics:
 

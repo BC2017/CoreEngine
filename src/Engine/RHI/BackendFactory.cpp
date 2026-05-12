@@ -16,9 +16,9 @@ namespace HFEngine::RHI
 
         return {
             backend,
-            false,
-            false,
-            "Concrete Vulkan backend implementation is scheduled after the DirectX 12 triangle path"
+            true,
+            true,
+            "Vulkan triangle backend is available"
         };
     }
 
@@ -29,7 +29,7 @@ namespace HFEngine::RHI
         capabilities.validationEnabled = validationEnabled;
         capabilities.adapterName = backend == RendererBackend::DirectX12
             ? "DX12 backend enumerates the active adapter at runtime"
-            : "RTX 4060 minimum target; adapter enumeration pending backend implementation";
+            : "Vulkan backend enumerates the active adapter at runtime";
         capabilities.supportsHardwareRayTracing = true;
         capabilities.supportsPathTracing = true;
         capabilities.framesInFlight = 2;

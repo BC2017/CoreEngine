@@ -3,6 +3,7 @@
 #include "Engine/Platform/Win32Window.hpp"
 #include "Engine/RHI/DX12/DX12TriangleRenderer.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
+#include "Engine/RHI/Vulkan/VulkanTriangleRenderer.hpp"
 #include "TestHarness.hpp"
 
 #include <iostream>
@@ -54,6 +55,27 @@ HFENGINE_TEST_CASE("gpu.rhi.dx12", "CreatesDeviceSwapchainAndSubmitsTriangleFram
 HFENGINE_TEST_CASE("gpu.rhi.vulkan", "CreatesDeviceSwapchainAndSubmitsTriangleFrame")
 {
     RequireBackendOrSkip(HFEngine::RHI::RendererBackend::Vulkan);
+
+    HFEngine::Platform::Win32Window window;
+    HFEngine::Platform::WindowDesc desc;
+    desc.title = L"HFEngine Vulkan Smoke Test";
+    desc.width = 320;
+    desc.height = 240;
+
+    HFENGINE_REQUIRE(window.Create(desc));
+
+    HFEngine::Core::EngineConfig config;
+    config.applicationName = "Vulkan Smoke Test";
+    config.rendererBackend = HFEngine::RHI::RendererBackend::Vulkan;
+    config.enableValidation = false;
+    config.maxFrames = 1;
+
+    const HFEngine::RHI::Vulkan::TriangleRunResult result =
+        HFEngine::RHI::Vulkan::RunTriangleSandbox(config, window);
+
+    HFENGINE_REQUIRE(result.success);
+    HFENGINE_REQUIRE(result.framesRendered == 1);
+    HFENGINE_REQUIRE(!result.adapterName.empty());
 }
 
 int main(int argc, char** argv)

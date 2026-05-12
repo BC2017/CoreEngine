@@ -5,6 +5,7 @@
 #include "Engine/RHI/BackendFactory.hpp"
 #include "Engine/RHI/DX12/DX12TriangleRenderer.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
+#include "Engine/RHI/Vulkan/VulkanTriangleRenderer.hpp"
 
 #include <iostream>
 
@@ -78,9 +79,34 @@ int main(int argc, char** argv)
         std::cout << "DX12 adapter: " << triangle.adapterName << '\n';
         std::cout << "DX12 frames rendered: " << triangle.framesRendered << '\n';
     }
+    else if (runtime.Backend() == HFEngine::RHI::RendererBackend::Vulkan)
+    {
+        HFEngine::Platform::Win32Window window;
+        HFEngine::Platform::WindowDesc windowDesc;
+        windowDesc.title = L"HFEngine - Vulkan Triangle";
+
+        if (!window.Create(windowDesc))
+        {
+            std::cerr << "Failed to create Win32 window\n";
+            runtime.Shutdown();
+            return 1;
+        }
+
+        const HFEngine::RHI::Vulkan::TriangleRunResult triangle =
+            HFEngine::RHI::Vulkan::RunTriangleSandbox(commandLine.config, window);
+        if (!triangle.success)
+        {
+            std::cerr << "Vulkan triangle failed: " << triangle.message << '\n';
+            runtime.Shutdown();
+            return 1;
+        }
+
+        std::cout << "Vulkan adapter: " << triangle.adapterName << '\n';
+        std::cout << "Vulkan frames rendered: " << triangle.framesRendered << '\n';
+    }
     else
     {
-        std::cerr << "Vulkan triangle backend is next; use --renderer dx12 for the current visible milestone.\n";
+        std::cerr << "Selected renderer is not implemented.\n";
         runtime.Shutdown();
         return 2;
     }
