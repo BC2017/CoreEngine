@@ -11,6 +11,34 @@ find_program(HFENGINE_SLANGC slangc HINTS "$ENV{VULKAN_SDK}/Bin")
 option(HFENGINE_BUILD_TESTS "Build engine tests" ON)
 option(HFENGINE_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
+function(hfengine_seed_vulkan_sdk_cache)
+    if(NOT DEFINED ENV{VULKAN_SDK})
+        return()
+    endif()
+
+    file(TO_CMAKE_PATH "$ENV{VULKAN_SDK}" HFENGINE_VULKAN_SDK)
+
+    foreach(candidate
+        "${HFENGINE_VULKAN_SDK}/Include"
+        "${HFENGINE_VULKAN_SDK}/include"
+    )
+        if(NOT Vulkan_INCLUDE_DIR AND EXISTS "${candidate}/vulkan/vulkan.h")
+            set(Vulkan_INCLUDE_DIR "${candidate}" CACHE PATH "Path to Vulkan headers")
+            break()
+        endif()
+    endforeach()
+
+    foreach(candidate
+        "${HFENGINE_VULKAN_SDK}/Lib/vulkan-1.lib"
+        "${HFENGINE_VULKAN_SDK}/lib/vulkan-1.lib"
+    )
+        if(NOT Vulkan_LIBRARY AND EXISTS "${candidate}")
+            set(Vulkan_LIBRARY "${candidate}" CACHE FILEPATH "Path to Vulkan loader library")
+            break()
+        endif()
+    endforeach()
+endfunction()
+
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui.cpp")
     message(FATAL_ERROR "Dear ImGui submodule is missing. Run: git submodule update --init --recursive")
 endif()
@@ -71,6 +99,7 @@ else()
 endif()
 
 if(WIN32)
+    hfengine_seed_vulkan_sdk_cache()
     find_package(Vulkan REQUIRED)
 
     target_link_libraries(HFEngineCore
