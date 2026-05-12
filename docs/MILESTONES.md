@@ -33,7 +33,7 @@ Foundation delivered:
 
 Branch: `codex/milestone-3-rhi-foundation`
 
-Foundation target:
+Foundation delivered:
 
 - API-neutral resource descriptions.
 - RHI validation helpers.
