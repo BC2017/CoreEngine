@@ -10,6 +10,7 @@ option(HFENGINE_BUILD_TESTS "Build engine tests" ON)
 option(HFENGINE_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 add_library(HFEngineCore STATIC
+    src/Engine/Asset/AssetRegistry.cpp
     src/Engine/Core/Assert.cpp
     src/Engine/Core/Clock.cpp
     src/Engine/Core/Engine.cpp
@@ -106,6 +107,7 @@ if(HFENGINE_BUILD_TESTS)
     endfunction()
 
     hfengine_add_test(HFEngineUnitTests unit
+        tests/unit/AssetPipelineTests.cpp
         tests/unit/CoreSystemsTests.cpp
         tests/unit/CoreVersionTests.cpp
         tests/unit/FrameGraphTests.cpp

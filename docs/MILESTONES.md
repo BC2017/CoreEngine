@@ -53,7 +53,7 @@ Foundation delivered:
 
 Branch: `codex/milestone-5-asset-pipeline`
 
-Foundation target:
+Foundation delivered:
 
 - Asset IDs.
 - Asset registry.
