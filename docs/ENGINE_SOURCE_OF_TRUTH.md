@@ -89,6 +89,8 @@ revised.
 - 2026-05-12: Chose glTF 2.0, KTX2/BasisU, OpenEXR/HDR, WAV/OGG, and cooked
   engine assets as the asset baseline.
 - 2026-05-12: Deferred networking and plugin/mod support.
+- 2026-05-12: Implemented the first shared Slang shader path: one triangle
+  shader source compiles to DXIL for DirectX 12 and SPIR-V for Vulkan.
 
 ## 4. Architecture Principles
 
@@ -990,17 +992,12 @@ samples/
 
 ## 13. Immediate Next Steps
 
-1. Add coding standards and formatting configuration.
-2. Add CI configuration.
-3. Implement core logging and assertion systems.
-4. Implement Win32 platform window creation.
-5. Add ImGui runtime/debug integration.
-6. Add Slang shader build path.
-7. Implement RHI contracts before either rendering backend grows too much.
-8. Implement DirectX 12 device, swapchain, and triangle submission.
-9. Implement Vulkan device, swapchain, and triangle submission.
-10. Add GPU smoke tests for both backends.
-11. Add EnTT as a git submodule and establish ECS wrapper boundaries.
+1. Move shader modules, pipeline descriptions, and backend capability reporting
+   behind stable public RHI interfaces before renderer features grow.
+2. Add EnTT as a git submodule and establish ECS wrapper boundaries.
+3. Add coding standards and formatting configuration.
+4. Add CI formatting or static-analysis gates after style rules are locked.
+5. Add the first sample scene after the dual-backend triangle.
 
 ## 14. Open Questions
 

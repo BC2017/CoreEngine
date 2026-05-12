@@ -87,7 +87,27 @@ Foundation delivered:
 
 Next target:
 
-- Replace bootstrap shader compilation with the planned Slang DXIL/SPIR-V path.
+- Completed by `codex/slang-shader-pipeline`.
+
+## Shared Slang Shader Pipeline
+
+Branch: `codex/slang-shader-pipeline`
+
+Foundation delivered:
+
+- Single Slang triangle shader source.
+- Build-time Slang compilation to DXIL for DirectX 12.
+- Build-time Slang compilation to SPIR-V for Vulkan.
+- DX12 runtime loading of compiled DXIL instead of embedded `D3DCompile`
+  source.
+- DX12 and Vulkan triangle paths both draw from `SV_VertexID`, keeping the first
+  visible shader path backend-neutral.
+
+Next target:
+
+- Start the next RHI slice by moving shader modules, pipeline descriptions, and
+  backend capability reporting behind stable public interfaces before renderer
+  features grow.
 
 ## Milestone 4: Frame Graph
 

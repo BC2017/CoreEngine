@@ -13,6 +13,9 @@ The project source of truth is:
 - CMake 3.22 or newer.
 - A C++20 compiler.
 - On Windows, Visual Studio with the C++ toolchain and Windows SDK.
+- Vulkan SDK 1.4.328.1 or newer. The build uses Vulkan headers/libraries and
+  `slangc` from the SDK to compile shared Slang shader source to DXIL and
+  SPIR-V.
 
 ## Configure
 
@@ -54,7 +57,8 @@ cmake --build --preset vs-debug
 
 The current runnable target is the sandbox executable. It verifies that the
 engine core can initialize and shut down cleanly with a selected renderer
-backend.
+backend. The triangle shader is authored once in Slang and compiled during the
+build to DXIL for DirectX 12 and SPIR-V for Vulkan.
 
 After building Debug with Visual Studio:
 

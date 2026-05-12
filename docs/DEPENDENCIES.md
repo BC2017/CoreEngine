@@ -8,13 +8,19 @@ rather than vendored.
 
 - `external/imgui`: Dear ImGui runtime/debug tooling and future editor UI.
 
+## Active SDK Tools
+
+- Vulkan SDK 1.4.328.1 or newer: Vulkan headers/libraries and `slangc` for
+  compiling shared Slang shader source to DXIL and SPIR-V.
+
 ## Planned Baseline
 
 - EnTT: ECS.
 - Dear ImGui: active submodule for runtime/debug tooling first, full editor
   later.
-- Slang: shared HLSL-style shader source, DXIL output, SPIR-V output, and
-  reflection.
+- Slang: currently consumed through the Vulkan SDK compiler. A source submodule
+  remains deferred until engine-owned compiler integration or reflection
+  libraries require it.
 - Jolt Physics: physics backend.
 - miniaudio: audio backend.
 - Lua 5.4 and sol2: first scripting backend.
