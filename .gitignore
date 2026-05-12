@@ -1,0 +1,15 @@
+# Build outputs
+build/
+out/
+
+# CMake generated files
+CMakeUserPresets.json
+
+# Editor and OS noise
+.vs/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini
+
