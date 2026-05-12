@@ -19,7 +19,6 @@ namespace HFEngine::Platform
 
             if (message == WM_DESTROY)
             {
-                PostQuitMessage(0);
                 return 0;
             }
 
@@ -117,6 +116,12 @@ namespace HFEngine::Platform
 
             TranslateMessage(&message);
             DispatchMessageW(&message);
+        }
+
+        if (hwnd_ != nullptr && IsWindow(static_cast<HWND>(hwnd_)) == FALSE)
+        {
+            hwnd_ = nullptr;
+            open_ = false;
         }
 
         return open_;
