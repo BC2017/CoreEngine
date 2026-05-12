@@ -20,6 +20,12 @@ The project source of truth is:
 cmake -S . -B build
 ```
 
+Or use the Visual Studio preset:
+
+```powershell
+cmake --preset vs-debug
+```
+
 ## Build
 
 ```powershell
@@ -30,6 +36,12 @@ For a specific Visual Studio configuration:
 
 ```powershell
 cmake --build build --config Debug
+```
+
+Using presets:
+
+```powershell
+cmake --build --preset vs-debug
 ```
 
 ## Run The Project
@@ -84,6 +96,12 @@ Run all tests with a Visual Studio or other multi-config generator:
 ctest --test-dir build -C Debug --output-on-failure
 ```
 
+Using presets:
+
+```powershell
+ctest --preset vs-debug
+```
+
 Run all tests with a single-config generator:
 
 ```powershell
@@ -124,3 +142,6 @@ Run a focused unit test subset:
 ```
 
 Test system details live in [tests/README.md](tests/README.md).
+
+Milestone tracking lives in [docs/MILESTONES.md](docs/MILESTONES.md).
+Dependency policy lives in [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md).
