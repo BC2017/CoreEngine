@@ -158,12 +158,14 @@ function(hfengine_compile_mesh_shaders target)
             -entry VSMain
             -profile glsl_450
             -target spirv
+            -DHFENGINE_VULKAN
             -o $<TARGET_FILE_DIR:${target}>/Mesh.vert.spv
         COMMAND ${HFENGINE_SLANGC}
             ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Mesh.slang
             -entry PSMain
             -profile glsl_450
             -target spirv
+            -DHFENGINE_VULKAN
             -o $<TARGET_FILE_DIR:${target}>/Mesh.frag.spv
         VERBATIM
     )

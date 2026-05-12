@@ -36,24 +36,40 @@ namespace HFEngine::RHI::Vulkan
             float color[4];
         };
 
-        constexpr std::array<MeshVertex, 8> CubeVertices{
-            MeshVertex{ { -0.50f, -0.35f, 0.25f }, { 0.95f, 0.20f, 0.18f, 1.0f } },
-            MeshVertex{ { 0.25f, -0.35f, 0.25f }, { 0.10f, 0.65f, 0.95f, 1.0f } },
-            MeshVertex{ { 0.25f, 0.40f, 0.25f }, { 0.20f, 0.85f, 0.35f, 1.0f } },
-            MeshVertex{ { -0.50f, 0.40f, 0.25f }, { 1.00f, 0.85f, 0.20f, 1.0f } },
-            MeshVertex{ { -0.20f, -0.10f, 0.70f }, { 0.80f, 0.35f, 1.00f, 1.0f } },
-            MeshVertex{ { 0.55f, -0.10f, 0.70f }, { 0.20f, 0.90f, 0.90f, 1.0f } },
-            MeshVertex{ { 0.55f, 0.65f, 0.70f }, { 0.95f, 0.45f, 0.25f, 1.0f } },
-            MeshVertex{ { -0.20f, 0.65f, 0.70f }, { 0.75f, 0.95f, 0.30f, 1.0f } },
+        constexpr std::array<MeshVertex, 24> CubeVertices{
+            MeshVertex{ { -0.45f, -0.42f, 0.18f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
+            MeshVertex{ { 0.28f, -0.42f, 0.18f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
+            MeshVertex{ { 0.28f, 0.31f, 0.18f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
+            MeshVertex{ { -0.45f, 0.31f, 0.18f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
+            MeshVertex{ { 0.28f, -0.42f, 0.18f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.58f, -0.15f, 0.62f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.58f, 0.58f, 0.62f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.28f, 0.31f, 0.18f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
+            MeshVertex{ { -0.45f, 0.31f, 0.18f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
+            MeshVertex{ { 0.28f, 0.31f, 0.18f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
+            MeshVertex{ { 0.58f, 0.58f, 0.62f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
+            MeshVertex{ { -0.15f, 0.58f, 0.62f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
+            MeshVertex{ { -0.15f, -0.15f, 0.62f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
+            MeshVertex{ { -0.45f, -0.42f, 0.18f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
+            MeshVertex{ { -0.45f, 0.31f, 0.18f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
+            MeshVertex{ { -0.15f, 0.58f, 0.62f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
+            MeshVertex{ { -0.15f, -0.15f, 0.62f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.58f, -0.15f, 0.62f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.28f, -0.42f, 0.18f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
+            MeshVertex{ { -0.45f, -0.42f, 0.18f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
+            MeshVertex{ { 0.58f, -0.15f, 0.62f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
+            MeshVertex{ { -0.15f, -0.15f, 0.62f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
+            MeshVertex{ { -0.15f, 0.58f, 0.62f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
+            MeshVertex{ { 0.58f, 0.58f, 0.62f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
         };
 
         constexpr std::array<std::uint16_t, 36> CubeIndices{
             0, 1, 2, 0, 2, 3,
-            1, 5, 6, 1, 6, 2,
-            5, 4, 7, 5, 7, 6,
-            4, 0, 3, 4, 3, 7,
-            3, 2, 6, 3, 6, 7,
-            4, 5, 1, 4, 1, 0,
+            4, 5, 6, 4, 6, 7,
+            8, 9, 10, 8, 10, 11,
+            12, 13, 14, 12, 14, 15,
+            16, 17, 18, 16, 18, 19,
+            20, 21, 22, 20, 22, 23,
         };
 
         struct QueueFamilySelection
