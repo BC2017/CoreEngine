@@ -16,6 +16,12 @@ The project source of truth is:
 
 ## Configure
 
+If this is a fresh clone, initialize submodules first:
+
+```powershell
+git submodule update --init --recursive
+```
+
 ```powershell
 cmake -S . -B build
 ```
@@ -97,8 +103,8 @@ state, RTX 4060 high-fidelity target note, backend implementation status, and a
 runtime shutdown confirmation.
 
 Backend switching is launch-time only for the first visible milestone. Runtime
-ImGui debug tooling will show the active backend and capabilities before a full
-editor is added.
+ImGui debug tooling now shows the active backend, adapter, validation state,
+frame counter, and frame timing placeholder before a full editor is added.
 
 ## Run Tests
 

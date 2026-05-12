@@ -2,10 +2,13 @@
 
 Third-party dependencies are managed as git submodules under this directory.
 
+Active submodules:
+
+- `imgui`: Dear ImGui runtime/debug tooling and future editor UI.
+
 Planned baseline:
 
 - EnTT for ECS.
-- Dear ImGui for runtime/debug tooling first, then editor UI.
 - Slang for HLSL-style shader authoring, DXIL output, SPIR-V output, and shader
   reflection.
 - Jolt Physics for physics.
@@ -15,4 +18,3 @@ Planned baseline:
 
 The Vulkan SDK and Windows/DirectX SDK tooling are system prerequisites rather
 than vendored source dependencies unless a future decision changes that policy.
-

@@ -11,7 +11,18 @@ find_program(HFENGINE_GLSLC glslc HINTS "$ENV{VULKAN_SDK}/Bin")
 option(HFENGINE_BUILD_TESTS "Build engine tests" ON)
 option(HFENGINE_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui.cpp")
+    message(FATAL_ERROR "Dear ImGui submodule is missing. Run: git submodule update --init --recursive")
+endif()
+
 add_library(HFEngineCore STATIC
+    external/imgui/imgui.cpp
+    external/imgui/imgui_draw.cpp
+    external/imgui/imgui_tables.cpp
+    external/imgui/imgui_widgets.cpp
+    external/imgui/backends/imgui_impl_dx12.cpp
+    external/imgui/backends/imgui_impl_vulkan.cpp
+    external/imgui/backends/imgui_impl_win32.cpp
     src/Engine/Asset/AssetRegistry.cpp
     src/Engine/Core/Assert.cpp
     src/Engine/Core/Clock.cpp
@@ -27,12 +38,15 @@ add_library(HFEngineCore STATIC
     src/Engine/RHI/Resource.cpp
     src/Engine/RHI/RendererBackend.cpp
     src/Engine/RHI/Vulkan/VulkanTriangleRenderer.cpp
+    src/Engine/Tools/RuntimeDebugOverlay.cpp
     src/Engine/Core/Version.cpp
 )
 
 target_include_directories(HFEngineCore
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends
 )
 
 target_compile_features(HFEngineCore PUBLIC cxx_std_20)

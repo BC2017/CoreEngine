@@ -1,10 +1,16 @@
 #include "Engine/RHI/Vulkan/VulkanTriangleRenderer.hpp"
 
+#include "Engine/Tools/RuntimeDebugOverlay.hpp"
+
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <Windows.h>
 #include <vulkan/vulkan.h>
+
+#include "imgui.h"
+#include "imgui_impl_vulkan.h"
+#include "imgui_impl_win32.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -201,6 +207,7 @@ namespace HFEngine::RHI::Vulkan
             VkSemaphore renderFinished = VK_NULL_HANDLE;
             VkFence inFlight = VK_NULL_HANDLE;
             std::uint32_t queueFamily = 0;
+            std::uint32_t minImageCount = 2;
             std::string adapterName;
 
             ~VulkanState()
@@ -345,6 +352,7 @@ namespace HFEngine::RHI::Vulkan
             {
                 imageCount = support.capabilities.maxImageCount;
             }
+            state.minImageCount = support.capabilities.minImageCount;
 
             VkSwapchainCreateInfoKHR createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -431,6 +439,52 @@ namespace HFEngine::RHI::Vulkan
             createInfo.pDependencies = &dependency;
 
             return VkSucceeded(vkCreateRenderPass(state.device, &createInfo, nullptr, &state.renderPass), message, "vkCreateRenderPass");
+        }
+
+        bool InitializeImGui(const Core::EngineConfig& config, Platform::Win32Window& window, VulkanState& state, std::string& message)
+        {
+            IMGUI_CHECKVERSION();
+            ImGui::CreateContext();
+            ImGui::StyleColorsDark();
+
+            if (!ImGui_ImplWin32_Init(static_cast<HWND>(window.NativeHandle())))
+            {
+                message = "ImGui_ImplWin32_Init failed";
+                return false;
+            }
+
+            ImGui_ImplVulkan_InitInfo initInfo{};
+            initInfo.ApiVersion = VK_API_VERSION_1_2;
+            initInfo.Instance = state.instance;
+            initInfo.PhysicalDevice = state.physicalDevice;
+            initInfo.Device = state.device;
+            initInfo.QueueFamily = state.queueFamily;
+            initInfo.Queue = state.graphicsQueue;
+            initInfo.DescriptorPoolSize = 64;
+            initInfo.MinImageCount = state.minImageCount;
+            initInfo.ImageCount = static_cast<std::uint32_t>(state.swapchainImages.size());
+            initInfo.PipelineInfoMain.RenderPass = state.renderPass;
+            initInfo.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+            if (!ImGui_ImplVulkan_Init(&initInfo))
+            {
+                message = "ImGui_ImplVulkan_Init failed";
+                return false;
+            }
+
+            ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+            (void)config;
+            return true;
+        }
+
+        void ShutdownImGui()
+        {
+            if (ImGui::GetCurrentContext() != nullptr)
+            {
+                ImGui_ImplVulkan_Shutdown();
+                ImGui_ImplWin32_Shutdown();
+                ImGui::DestroyContext();
+            }
         }
 
         bool CreateShaderModule(VulkanState& state, const std::vector<std::uint32_t>& spirv, VkShaderModule& outShader, std::string& message)
@@ -625,7 +679,12 @@ namespace HFEngine::RHI::Vulkan
                    CreateCommandsAndSync(state, message);
         }
 
-        bool RecordCommandBuffer(VulkanState& state, std::uint32_t imageIndex, std::string& message)
+        bool RecordCommandBuffer(
+            const Core::EngineConfig& config,
+            VulkanState& state,
+            std::uint32_t imageIndex,
+            unsigned int framesRendered,
+            std::string& message)
         {
             VkCommandBufferBeginInfo beginInfo{};
             beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -648,12 +707,30 @@ namespace HFEngine::RHI::Vulkan
             vkCmdBeginRenderPass(state.commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(state.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state.pipeline);
             vkCmdDraw(state.commandBuffer, 3, 1, 0, 0);
+
+            ImGui_ImplVulkan_NewFrame();
+            ImGui_ImplWin32_NewFrame();
+            ImGui::NewFrame();
+            Tools::DrawRuntimeDebugOverlay({
+                "Vulkan",
+                state.adapterName,
+                config.enableValidation,
+                framesRendered,
+                0.0f,
+            });
+            ImGui::Render();
+            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), state.commandBuffer);
+
             vkCmdEndRenderPass(state.commandBuffer);
 
             return VkSucceeded(vkEndCommandBuffer(state.commandBuffer), message, "vkEndCommandBuffer");
         }
 
-        bool RenderFrame(VulkanState& state, std::string& message)
+        bool RenderFrame(
+            const Core::EngineConfig& config,
+            VulkanState& state,
+            unsigned int framesRendered,
+            std::string& message)
         {
             vkWaitForFences(state.device, 1, &state.inFlight, VK_TRUE, UINT64_MAX);
             vkResetFences(state.device, 1, &state.inFlight);
@@ -668,7 +745,7 @@ namespace HFEngine::RHI::Vulkan
             }
 
             vkResetCommandBuffer(state.commandBuffer, 0);
-            if (!RecordCommandBuffer(state, imageIndex, message))
+            if (!RecordCommandBuffer(config, state, imageIndex, framesRendered, message))
             {
                 return false;
             }
@@ -713,8 +790,10 @@ namespace HFEngine::RHI::Vulkan
         TriangleRunResult result;
 
         VulkanState state;
-        if (!Initialize(state, window, result.message))
+        if (!Initialize(state, window, result.message) ||
+            !InitializeImGui(config, window, state, result.message))
         {
+            ShutdownImGui();
             return result;
         }
 
@@ -722,8 +801,9 @@ namespace HFEngine::RHI::Vulkan
 
         while (window.PumpMessages())
         {
-            if (!RenderFrame(state, result.message))
+            if (!RenderFrame(config, state, result.framesRendered, result.message))
             {
+                ShutdownImGui();
                 return result;
             }
 
@@ -735,6 +815,7 @@ namespace HFEngine::RHI::Vulkan
         }
 
         vkDeviceWaitIdle(state.device);
+        ShutdownImGui();
         result.success = true;
         result.message = "ok";
         return result;
