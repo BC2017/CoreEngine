@@ -13,9 +13,9 @@ The project source of truth is:
 - CMake 3.22 or newer.
 - A C++20 compiler.
 - On Windows, Visual Studio with the C++ toolchain and Windows SDK.
-- Vulkan SDK 1.4.328.1 or newer. The build uses Vulkan headers/libraries and
-  `slangc` from the SDK to compile shared Slang shader source to DXIL and
-  SPIR-V.
+- Vulkan SDK with Vulkan headers/libraries and `slangc`. CI currently pins
+  1.4.309.0; newer local SDKs are fine when they expose the same tools and
+  loader library layout.
 
 ## Configure
 

@@ -10,8 +10,9 @@ rather than vendored.
 
 ## Active SDK Tools
 
-- Vulkan SDK 1.4.328.1 or newer: Vulkan headers/libraries and `slangc` for
-  compiling shared Slang shader source to DXIL and SPIR-V.
+- Vulkan SDK: Vulkan headers/libraries and `slangc` for compiling shared Slang
+  shader source to DXIL and SPIR-V. CI pins 1.4.309.0 because that GitHub
+  Actions SDK layout is known-compatible with CMake Vulkan discovery.
 
 ## Planned Baseline
 
