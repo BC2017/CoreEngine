@@ -23,6 +23,9 @@ jobs:
           version: 1.4.309.0
           cache: true
 
+      - name: Verify shader compiler
+        run: slangc -version
+
       - name: Configure
         run: cmake -S . -B build -DHFENGINE_BUILD_TESTS=ON
 

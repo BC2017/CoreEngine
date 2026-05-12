@@ -6,10 +6,38 @@ project(HFEngine
     LANGUAGES CXX
 )
 
-find_program(HFENGINE_GLSLC glslc HINTS "$ENV{VULKAN_SDK}/Bin")
+find_program(HFENGINE_SLANGC slangc HINTS "$ENV{VULKAN_SDK}/Bin")
 
 option(HFENGINE_BUILD_TESTS "Build engine tests" ON)
 option(HFENGINE_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+
+function(hfengine_seed_vulkan_sdk_cache)
+    if(NOT DEFINED ENV{VULKAN_SDK})
+        return()
+    endif()
+
+    file(TO_CMAKE_PATH "$ENV{VULKAN_SDK}" HFENGINE_VULKAN_SDK)
+
+    foreach(candidate
+        "${HFENGINE_VULKAN_SDK}/Include"
+        "${HFENGINE_VULKAN_SDK}/include"
+    )
+        if(NOT Vulkan_INCLUDE_DIR AND EXISTS "${candidate}/vulkan/vulkan.h")
+            set(Vulkan_INCLUDE_DIR "${candidate}" CACHE PATH "Path to Vulkan headers")
+            break()
+        endif()
+    endforeach()
+
+    foreach(candidate
+        "${HFENGINE_VULKAN_SDK}/Lib/vulkan-1.lib"
+        "${HFENGINE_VULKAN_SDK}/lib/vulkan-1.lib"
+    )
+        if(NOT Vulkan_LIBRARY AND EXISTS "${candidate}")
+            set(Vulkan_LIBRARY "${candidate}" CACHE FILEPATH "Path to Vulkan loader library")
+            break()
+        endif()
+    endforeach()
+endfunction()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui.cpp")
     message(FATAL_ERROR "Dear ImGui submodule is missing. Run: git submodule update --init --recursive")
@@ -71,6 +99,7 @@ else()
 endif()
 
 if(WIN32)
+    hfengine_seed_vulkan_sdk_cache()
     find_package(Vulkan REQUIRED)
 
     target_link_libraries(HFEngineCore
@@ -105,25 +134,41 @@ else()
     endif()
 endif()
 
-function(hfengine_compile_vulkan_shaders target)
-    if(NOT HFENGINE_GLSLC)
-        message(FATAL_ERROR "glslc was not found. Install the Vulkan SDK or add glslc to PATH.")
+function(hfengine_compile_triangle_shaders target)
+    if(NOT HFENGINE_SLANGC)
+        message(FATAL_ERROR "slangc was not found. Install the Vulkan SDK or add slangc to PATH.")
     endif()
 
     add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${HFENGINE_GLSLC}
-            -fshader-stage=vert
-            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.vert.glsl
+        COMMAND ${HFENGINE_SLANGC}
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.slang
+            -entry VSMain
+            -profile vs_6_0
+            -target dxil
+            -o $<TARGET_FILE_DIR:${target}>/Triangle.vs.dxil
+        COMMAND ${HFENGINE_SLANGC}
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.slang
+            -entry PSMain
+            -profile ps_6_0
+            -target dxil
+            -o $<TARGET_FILE_DIR:${target}>/Triangle.ps.dxil
+        COMMAND ${HFENGINE_SLANGC}
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.slang
+            -entry VSMain
+            -profile glsl_450
+            -target spirv
             -o $<TARGET_FILE_DIR:${target}>/Triangle.vert.spv
-        COMMAND ${HFENGINE_GLSLC}
-            -fshader-stage=frag
-            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.frag.glsl
+        COMMAND ${HFENGINE_SLANGC}
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders/Triangle.slang
+            -entry PSMain
+            -profile glsl_450
+            -target spirv
             -o $<TARGET_FILE_DIR:${target}>/Triangle.frag.spv
         VERBATIM
     )
 endfunction()
 
-hfengine_compile_vulkan_shaders(HFEngineSandbox)
+hfengine_compile_triangle_shaders(HFEngineSandbox)
 
 if(HFENGINE_BUILD_TESTS)
     enable_testing()
@@ -173,5 +218,5 @@ if(HFENGINE_BUILD_TESTS)
         tests/integration/RhiGpuSmokeTests.cpp
     )
 
-    hfengine_compile_vulkan_shaders(HFEngineGpuSmokeTests)
+    hfengine_compile_triangle_shaders(HFEngineGpuSmokeTests)
 endif()

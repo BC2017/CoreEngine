@@ -14,11 +14,12 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
-#include <array>
 #include <cstddef>
+#include <cstdio>
 #include <cstdint>
-#include <cstring>
+#include <fstream>
 #include <string>
+#include <vector>
 
 using Microsoft::WRL::ComPtr;
 
@@ -27,45 +28,6 @@ namespace HFEngine::RHI::DX12
     namespace
     {
         constexpr UINT FrameCount = 2;
-
-        struct Vertex
-        {
-            float position[3];
-            float color[4];
-        };
-
-        constexpr std::array<Vertex, 3> TriangleVertices{
-            Vertex{ { 0.0f, 0.5f, 0.0f }, { 0.95f, 0.20f, 0.18f, 1.0f } },
-            Vertex{ { 0.5f, -0.5f, 0.0f }, { 0.10f, 0.65f, 0.95f, 1.0f } },
-            Vertex{ { -0.5f, -0.5f, 0.0f }, { 0.20f, 0.85f, 0.35f, 1.0f } },
-        };
-
-        constexpr char ShaderSource[] = R"(
-struct VSInput
-{
-    float3 position : POSITION;
-    float4 color : COLOR;
-};
-
-struct PSInput
-{
-    float4 position : SV_POSITION;
-    float4 color : COLOR;
-};
-
-PSInput VSMain(VSInput input)
-{
-    PSInput output;
-    output.position = float4(input.position, 1.0);
-    output.color = input.color;
-    return output;
-}
-
-float4 PSMain(PSInput input) : SV_TARGET
-{
-    return input.color;
-}
-)";
 
         std::string ToUtf8(const wchar_t* text)
         {
@@ -83,6 +45,45 @@ float4 PSMain(PSInput input) : SV_TARGET
             std::string output(static_cast<std::size_t>(required - 1), '\0');
             WideCharToMultiByte(CP_UTF8, 0, text, -1, output.data(), required, nullptr, nullptr);
             return output;
+        }
+
+        std::string ExecutableDirectory()
+        {
+            wchar_t path[MAX_PATH]{};
+            const DWORD size = GetModuleFileNameW(nullptr, path, MAX_PATH);
+            if (size == 0 || size == MAX_PATH)
+            {
+                return ".";
+            }
+
+            std::wstring widePath(path, size);
+            const std::size_t slash = widePath.find_last_of(L"\\/");
+            if (slash != std::wstring::npos)
+            {
+                widePath.resize(slash);
+            }
+
+            return ToUtf8(widePath.c_str());
+        }
+
+        std::vector<std::uint8_t> ReadBinary(const std::string& path)
+        {
+            std::ifstream file(path, std::ios::binary | std::ios::ate);
+            if (!file)
+            {
+                return {};
+            }
+
+            const std::streamsize size = file.tellg();
+            if (size <= 0)
+            {
+                return {};
+            }
+
+            std::vector<std::uint8_t> data(static_cast<std::size_t>(size));
+            file.seekg(0, std::ios::beg);
+            file.read(reinterpret_cast<char*>(data.data()), size);
+            return data;
         }
 
         bool Succeeded(HRESULT result, std::string& message, const char* operation)
@@ -130,8 +131,6 @@ float4 PSMain(PSInput input) : SV_TARGET
             ComPtr<ID3D12RootSignature> rootSignature;
             ComPtr<ID3D12PipelineState> pipelineState;
             ComPtr<ID3D12GraphicsCommandList> commandList;
-            ComPtr<ID3D12Resource> vertexBuffer;
-            D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
             ComPtr<ID3D12Fence> fence;
             HANDLE fenceEvent = nullptr;
             UINT rtvDescriptorSize = 0;
@@ -419,72 +418,20 @@ float4 PSMain(PSInput input) : SV_TARGET
                 return false;
             }
 
-            ComPtr<ID3DBlob> vertexShader;
-            ComPtr<ID3DBlob> pixelShader;
-            UINT compileFlags = D3DCOMPILE_ENABLE_STRICTNESS;
-#if defined(_DEBUG)
-            compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif
-
-            if (!Succeeded(
-                    D3DCompile(
-                        ShaderSource,
-                        std::strlen(ShaderSource),
-                        "TriangleShader.hlsl",
-                        nullptr,
-                        nullptr,
-                        "VSMain",
-                        "vs_5_0",
-                        compileFlags,
-                        0,
-                        &vertexShader,
-                        &error),
-                    message,
-                    "D3DCompile(VSMain)"))
+            const std::string shaderDir = ExecutableDirectory();
+            const std::vector<std::uint8_t> vertexShader = ReadBinary(shaderDir + "\\Triangle.vs.dxil");
+            const std::vector<std::uint8_t> pixelShader = ReadBinary(shaderDir + "\\Triangle.ps.dxil");
+            if (vertexShader.empty() || pixelShader.empty())
             {
-                if (error)
-                {
-                    message += ": ";
-                    message += static_cast<const char*>(error->GetBufferPointer());
-                }
+                message = "DXIL shader file is missing or empty";
                 return false;
             }
-
-            error.Reset();
-            if (!Succeeded(
-                    D3DCompile(
-                        ShaderSource,
-                        std::strlen(ShaderSource),
-                        "TriangleShader.hlsl",
-                        nullptr,
-                        nullptr,
-                        "PSMain",
-                        "ps_5_0",
-                        compileFlags,
-                        0,
-                        &pixelShader,
-                        &error),
-                    message,
-                    "D3DCompile(PSMain)"))
-            {
-                if (error)
-                {
-                    message += ": ";
-                    message += static_cast<const char*>(error->GetBufferPointer());
-                }
-                return false;
-            }
-
-            constexpr D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-                { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-                { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            };
 
             D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
-            pipelineDesc.InputLayout = { inputLayout, static_cast<UINT>(std::size(inputLayout)) };
+            pipelineDesc.InputLayout = { nullptr, 0 };
             pipelineDesc.pRootSignature = state.rootSignature.Get();
-            pipelineDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
-            pipelineDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
+            pipelineDesc.VS = { vertexShader.data(), vertexShader.size() };
+            pipelineDesc.PS = { pixelShader.data(), pixelShader.size() };
             pipelineDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
             pipelineDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
             pipelineDesc.RasterizerState.DepthClipEnable = TRUE;
@@ -524,46 +471,6 @@ float4 PSMain(PSInput input) : SV_TARGET
 
         bool InitializeAssets(Dx12State& state, std::string& message)
         {
-            D3D12_HEAP_PROPERTIES heapProperties{};
-            heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-            D3D12_RESOURCE_DESC bufferDesc{};
-            bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            bufferDesc.Width = sizeof(Vertex) * TriangleVertices.size();
-            bufferDesc.Height = 1;
-            bufferDesc.DepthOrArraySize = 1;
-            bufferDesc.MipLevels = 1;
-            bufferDesc.SampleDesc.Count = 1;
-            bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-            if (!Succeeded(
-                    state.device->CreateCommittedResource(
-                        &heapProperties,
-                        D3D12_HEAP_FLAG_NONE,
-                        &bufferDesc,
-                        D3D12_RESOURCE_STATE_GENERIC_READ,
-                        nullptr,
-                        IID_PPV_ARGS(&state.vertexBuffer)),
-                    message,
-                    "CreateCommittedResource(vertex buffer)"))
-            {
-                return false;
-            }
-
-            void* mappedData = nullptr;
-            D3D12_RANGE readRange{ 0, 0 };
-            if (!Succeeded(state.vertexBuffer->Map(0, &readRange, &mappedData), message, "Map(vertex buffer)"))
-            {
-                return false;
-            }
-
-            std::memcpy(mappedData, TriangleVertices.data(), sizeof(Vertex) * TriangleVertices.size());
-            state.vertexBuffer->Unmap(0, nullptr);
-
-            state.vertexBufferView.BufferLocation = state.vertexBuffer->GetGPUVirtualAddress();
-            state.vertexBufferView.StrideInBytes = sizeof(Vertex);
-            state.vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(Vertex) * TriangleVertices.size());
-
             if (!Succeeded(state.device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&state.fence)), message, "CreateFence"))
             {
                 return false;
@@ -648,7 +555,6 @@ float4 PSMain(PSInput input) : SV_TARGET
             state.commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
             state.commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
             state.commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            state.commandList->IASetVertexBuffers(0, 1, &state.vertexBufferView);
             state.commandList->DrawInstanced(3, 1, 0, 0);
 
             ImGui_ImplDX12_NewFrame();
