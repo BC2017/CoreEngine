@@ -18,8 +18,10 @@ add_library(HFEngineCore STATIC
     src/Engine/Core/FileSystem.cpp
     src/Engine/Core/JobSystem.cpp
     src/Engine/Core/Logger.cpp
+    src/Engine/Platform/Win32Window.cpp
     src/Engine/Renderer/FrameGraph.cpp
     src/Engine/RHI/BackendFactory.cpp
+    src/Engine/RHI/DX12/DX12TriangleRenderer.cpp
     src/Engine/RHI/Resource.cpp
     src/Engine/RHI/RendererBackend.cpp
     src/Engine/Core/Version.cpp
@@ -49,6 +51,15 @@ else()
     if(HFENGINE_WARNINGS_AS_ERRORS)
         target_compile_options(HFEngineCore PRIVATE -Werror)
     endif()
+endif()
+
+if(WIN32)
+    target_link_libraries(HFEngineCore
+        PUBLIC
+            d3d12
+            dxgi
+            d3dcompiler
+    )
 endif()
 
 add_executable(HFEngineSandbox

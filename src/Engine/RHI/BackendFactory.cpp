@@ -4,11 +4,21 @@ namespace HFEngine::RHI
 {
     BackendAvailability QueryBackendAvailability(RendererBackend backend) noexcept
     {
+        if (backend == RendererBackend::DirectX12)
+        {
+            return {
+                backend,
+                true,
+                true,
+                "DirectX 12 triangle backend is available"
+            };
+        }
+
         return {
             backend,
             false,
             false,
-            "Concrete DX12/Vulkan backend implementation is scheduled for the dual-backend triangle milestone"
+            "Concrete Vulkan backend implementation is scheduled after the DirectX 12 triangle path"
         };
     }
 
@@ -17,7 +27,9 @@ namespace HFEngine::RHI
         DeviceCapabilities capabilities;
         capabilities.backend = backend;
         capabilities.validationEnabled = validationEnabled;
-        capabilities.adapterName = "RTX 4060 minimum target; adapter enumeration pending backend implementation";
+        capabilities.adapterName = backend == RendererBackend::DirectX12
+            ? "DX12 backend enumerates the active adapter at runtime"
+            : "RTX 4060 minimum target; adapter enumeration pending backend implementation";
         capabilities.supportsHardwareRayTracing = true;
         capabilities.supportsPathTracing = true;
         capabilities.framesInFlight = 2;

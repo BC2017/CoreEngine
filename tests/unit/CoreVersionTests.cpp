@@ -108,6 +108,16 @@ HFENGINE_TEST_CASE("unit.core.command_line", "RejectsUnknownArguments")
     HFENGINE_REQUIRE(!result.message.empty());
 }
 
+HFENGINE_TEST_CASE("unit.core.command_line", "ParsesBoundedFrameCount")
+{
+    constexpr std::string_view arguments[] = { "HFEngineSandbox", "--frames", "3" };
+
+    const HFEngine::Core::CommandLineResult result = HFEngine::Core::ParseCommandLine(arguments);
+
+    HFENGINE_REQUIRE(result.success);
+    HFENGINE_REQUIRE(result.config.maxFrames == 3);
+}
+
 HFENGINE_TEST_CASE("unit.rhi.capabilities", "DescribesPlannedBackendCapabilities")
 {
     const HFEngine::RHI::DeviceCapabilities capabilities =

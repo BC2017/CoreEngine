@@ -39,6 +39,23 @@ Foundation delivered:
 - RHI validation helpers.
 - Backend capability and availability contracts.
 
+## Milestone 0.5A: DirectX 12 Triangle
+
+Branch: `codex/dx12-triangle-milestone`
+
+Foundation delivered:
+
+- Win32 sandbox window.
+- Launch-time DX12 backend execution.
+- DX12 device, swapchain, command queue, render target, root signature, pipeline,
+  vertex buffer, fence, and frame submission.
+- Bounded `--frames` mode for automation.
+- GPU smoke test that renders one DX12 triangle frame.
+
+Note: the bootstrap DX12 path uses embedded HLSL-style shader source compiled
+through `D3DCompile`. Shared Slang compilation remains the planned shader path
+for the dual-backend milestone.
+
 ## Milestone 4: Frame Graph
 
 Branch: `codex/milestone-4-frame-graph`

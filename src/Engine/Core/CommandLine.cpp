@@ -1,5 +1,6 @@
 #include "Engine/Core/CommandLine.hpp"
 
+#include <charconv>
 #include <vector>
 
 namespace HFEngine::Core
@@ -7,10 +8,19 @@ namespace HFEngine::Core
     namespace
     {
         constexpr std::string_view RendererPrefix = "--renderer=";
+        constexpr std::string_view FramesPrefix = "--frames=";
 
         bool StartsWith(std::string_view value, std::string_view prefix) noexcept
         {
             return value.size() >= prefix.size() && value.substr(0, prefix.size()) == prefix;
+        }
+
+        bool TryParseFrames(std::string_view value, std::uint32_t& outFrames) noexcept
+        {
+            const char* begin = value.data();
+            const char* end = value.data() + value.size();
+            const std::from_chars_result result = std::from_chars(begin, end, outFrames);
+            return result.ec == std::errc() && result.ptr == end;
         }
     }
 
@@ -49,6 +59,30 @@ namespace HFEngine::Core
                 }
 
                 result.config.rendererBackend = parsed.backend;
+                continue;
+            }
+
+            if (argument == "--frames")
+            {
+                if (index + 1 >= arguments.size() || !TryParseFrames(arguments[++index], result.config.maxFrames))
+                {
+                    result.success = false;
+                    result.message = "--frames requires an unsigned integer value";
+                    return result;
+                }
+
+                continue;
+            }
+
+            if (StartsWith(argument, FramesPrefix))
+            {
+                if (!TryParseFrames(argument.substr(FramesPrefix.size()), result.config.maxFrames))
+                {
+                    result.success = false;
+                    result.message = "--frames requires an unsigned integer value";
+                    return result;
+                }
+
                 continue;
             }
 
@@ -100,7 +134,7 @@ namespace HFEngine::Core
         std::string usage;
         usage += "Usage: ";
         usage += executableName.empty() ? "HFEngineSandbox" : executableName;
-        usage += " [--renderer dx12|vulkan] [--no-validation]\n";
+        usage += " [--renderer dx12|vulkan] [--no-validation] [--frames count]\n";
         usage += "Backend switching is launch-time only for the first milestone.\n";
         return usage;
     }
