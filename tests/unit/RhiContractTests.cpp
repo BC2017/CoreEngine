@@ -1,10 +1,12 @@
 #include "Engine/RHI/Pipeline.hpp"
 #include "Engine/RHI/Resource.hpp"
 #include "Engine/RHI/CommandList.hpp"
+#include "Engine/Renderer/SandboxFrameRenderer.hpp"
 #include "Engine/Renderer/SandboxMesh.hpp"
 #include "TestHarness.hpp"
 
 #include <cstddef>
+#include <string_view>
 
 namespace
 {
@@ -203,6 +205,14 @@ HFENGINE_TEST_CASE("unit.renderer.sandboxmesh", "BuildsValidSharedMeshContracts"
     HFENGINE_REQUIRE(HFEngine::RHI::ValidateDrawIndexedDesc(draw).valid);
     HFENGINE_REQUIRE(HFEngine::Renderer::SandboxCubeVertices().size() == draw.vertexCount);
     HFENGINE_REQUIRE(HFEngine::Renderer::SandboxCubeIndices().size() == draw.indexCount);
+}
+
+HFENGINE_TEST_CASE("unit.renderer.sandboxframe", "SelectsBackendSpecificWindowTitles")
+{
+    HFENGINE_REQUIRE(std::wstring_view(HFEngine::Renderer::SandboxWindowTitle(HFEngine::RHI::RendererBackend::DirectX12)) ==
+                     L"HFEngine - DirectX 12 Mesh");
+    HFENGINE_REQUIRE(std::wstring_view(HFEngine::Renderer::SandboxWindowTitle(HFEngine::RHI::RendererBackend::Vulkan)) ==
+                     L"HFEngine - Vulkan Mesh");
 }
 
 HFENGINE_TEST_CASE("unit.rhi.pipeline", "RejectsAttributePastVertexStride")

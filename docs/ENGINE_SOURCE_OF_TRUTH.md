@@ -103,6 +103,9 @@ revised.
   shared sandbox mesh contracts consumed by both backend renderers.
 - 2026-05-12: Added backend-neutral command list and render pass descriptors
   with command sequencing validation before backend-specific command emission.
+- 2026-05-12: Added a renderer-facing sandbox frame submission API so sandbox
+  runtime code no longer selects or calls DX12/Vulkan backend renderers
+  directly.
 
 ## 4. Architecture Principles
 

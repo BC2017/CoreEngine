@@ -193,8 +193,27 @@ Foundation delivered:
 
 Next target:
 
-- Create a renderer-facing frame submission API that owns backend selection and
-  routes validated command plans into DX12 or Vulkan implementations.
+- Start scene-level submission by introducing entities/components for camera,
+  transform, and mesh instances that can feed the renderer-facing frame path.
+
+## Renderer Frame Submission Foundation
+
+Branch: `codex/renderer-frame-submission`
+
+Foundation delivered:
+
+- Renderer-facing sandbox frame submission API.
+- Backend-specific sandbox window titles centralized behind renderer code.
+- Sandbox executable no longer creates renderer windows or calls DX12/Vulkan
+  backend renderer functions directly.
+- GPU smoke tests exercise the renderer-facing frame submission path for both
+  DX12 and Vulkan.
+- Unit test coverage for backend-specific sandbox frame metadata.
+
+Next target:
+
+- Introduce a minimal scene/ECS slice with transform, camera, and mesh instance
+  data feeding the renderer submission path.
 
 ## Milestone 4: Frame Graph
 

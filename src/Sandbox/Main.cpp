@@ -1,11 +1,9 @@
 #include "Engine/Core/CommandLine.hpp"
 #include "Engine/Core/Engine.hpp"
 #include "Engine/Core/Version.hpp"
-#include "Engine/Platform/Win32Window.hpp"
 #include "Engine/RHI/BackendFactory.hpp"
-#include "Engine/RHI/DX12/DX12SandboxRenderer.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
-#include "Engine/RHI/Vulkan/VulkanSandboxRenderer.hpp"
+#include "Engine/Renderer/SandboxFrameRenderer.hpp"
 
 #include <iostream>
 
@@ -54,62 +52,18 @@ int main(int argc, char** argv)
     std::cout << "Current visible milestone: render the same indexed cube mesh through both backends\n";
     std::cout << "Runtime/debug tooling planned before full editor: ImGui backend/status overlay\n";
 
-    if (runtime.Backend() == HFEngine::RHI::RendererBackend::DirectX12)
+    const HFEngine::Renderer::SandboxFrameRenderResult render =
+        HFEngine::Renderer::RunSandboxFrameRenderer(commandLine.config);
+    if (!render.success)
     {
-        HFEngine::Platform::Win32Window window;
-        HFEngine::Platform::WindowDesc windowDesc;
-        windowDesc.title = L"HFEngine - DirectX 12 Mesh";
-
-        if (!window.Create(windowDesc))
-        {
-            std::cerr << "Failed to create Win32 window\n";
-            runtime.Shutdown();
-            return 1;
-        }
-
-        const HFEngine::RHI::DX12::SandboxRenderResult render =
-            HFEngine::RHI::DX12::RunSandboxRenderer(commandLine.config, window);
-        if (!render.success)
-        {
-            std::cerr << "DX12 mesh render failed: " << render.message << '\n';
-            runtime.Shutdown();
-            return 1;
-        }
-
-        std::cout << "DX12 adapter: " << render.adapterName << '\n';
-        std::cout << "DX12 frames rendered: " << render.framesRendered << '\n';
-    }
-    else if (runtime.Backend() == HFEngine::RHI::RendererBackend::Vulkan)
-    {
-        HFEngine::Platform::Win32Window window;
-        HFEngine::Platform::WindowDesc windowDesc;
-        windowDesc.title = L"HFEngine - Vulkan Mesh";
-
-        if (!window.Create(windowDesc))
-        {
-            std::cerr << "Failed to create Win32 window\n";
-            runtime.Shutdown();
-            return 1;
-        }
-
-        const HFEngine::RHI::Vulkan::SandboxRenderResult render =
-            HFEngine::RHI::Vulkan::RunSandboxRenderer(commandLine.config, window);
-        if (!render.success)
-        {
-            std::cerr << "Vulkan mesh render failed: " << render.message << '\n';
-            runtime.Shutdown();
-            return 1;
-        }
-
-        std::cout << "Vulkan adapter: " << render.adapterName << '\n';
-        std::cout << "Vulkan frames rendered: " << render.framesRendered << '\n';
-    }
-    else
-    {
-        std::cerr << "Selected renderer is not implemented.\n";
+        std::cerr << HFEngine::RHI::ToString(render.backend) << " mesh render failed: "
+                  << render.message << '\n';
         runtime.Shutdown();
-        return 2;
+        return 1;
     }
+
+    std::cout << HFEngine::RHI::ToString(render.backend) << " adapter: " << render.adapterName << '\n';
+    std::cout << HFEngine::RHI::ToString(render.backend) << " frames rendered: " << render.framesRendered << '\n';
 
     runtime.Shutdown();
     std::cout << "Runtime shutdown complete\n";
