@@ -1,6 +1,7 @@
 #include "Engine/RHI/DX12/DX12SandboxRenderer.hpp"
 
 #include "Engine/Renderer/Camera.hpp"
+#include "Engine/Renderer/SandboxMesh.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
 #include "Engine/Tools/RuntimeDebugOverlay.hpp"
 
@@ -33,12 +34,6 @@ namespace HFEngine::RHI::DX12
         constexpr UINT FrameCount = 2;
         constexpr DXGI_FORMAT DepthFormat = DXGI_FORMAT_D32_FLOAT;
 
-        struct MeshVertex
-        {
-            float position[3];
-            float color[4];
-        };
-
         struct FrameConstants
         {
             Math::Mat4 viewProjection;
@@ -49,41 +44,8 @@ namespace HFEngine::RHI::DX12
             return (size + 255u) & ~255u;
         }
 
-        constexpr std::array<MeshVertex, 24> CubeVertices{
-            MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, -0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, 0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, 0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, -0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, -0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, -0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, 0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, 0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, 0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, -0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, 0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, 0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, 0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, -0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
-        };
-
-        constexpr std::array<std::uint16_t, 36> CubeIndices{
-            0, 1, 2, 0, 2, 3,
-            4, 5, 6, 4, 6, 7,
-            8, 9, 10, 8, 10, 11,
-            12, 13, 14, 12, 14, 15,
-            16, 17, 18, 16, 18, 19,
-            20, 21, 22, 20, 22, 23,
-        };
+        constexpr BufferHandle SandboxVertexBufferHandle{ 1u, 1u };
+        constexpr BufferHandle SandboxIndexBufferHandle{ 2u, 1u };
 
         std::string ToUtf8(const wchar_t* text)
         {
@@ -194,6 +156,7 @@ namespace HFEngine::RHI::DX12
             ComPtr<ID3D12Resource> frameConstantBuffer;
             D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
             D3D12_INDEX_BUFFER_VIEW indexBufferView{};
+            DrawIndexedDesc meshDrawDesc;
             void* frameConstantBufferMapped = nullptr;
             ComPtr<ID3D12Fence> fence;
             HANDLE fenceEvent = nullptr;
@@ -471,6 +434,14 @@ namespace HFEngine::RHI::DX12
 
         bool InitializePipeline(Dx12State& state, std::string& message)
         {
+            const GraphicsPipelineDesc pipelineContract = Renderer::BuildSandboxMeshPipelineDesc();
+            const ValidationResult pipelineValidation = ValidateGraphicsPipelineDesc(pipelineContract);
+            if (!pipelineValidation.valid)
+            {
+                message = pipelineValidation.message;
+                return false;
+            }
+
             D3D12_ROOT_PARAMETER rootParameters[1]{};
             rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
             rootParameters[0].Descriptor.ShaderRegister = 0;
@@ -568,12 +539,23 @@ namespace HFEngine::RHI::DX12
 
         bool InitializeAssets(Dx12State& state, Platform::Win32Window& window, std::string& message)
         {
+            const std::span<const Renderer::SandboxMeshVertex> vertices = Renderer::SandboxCubeVertices();
+            const std::span<const std::uint16_t> indices = Renderer::SandboxCubeIndices();
+
+            state.meshDrawDesc = Renderer::BuildSandboxMeshDrawDesc(SandboxVertexBufferHandle, SandboxIndexBufferHandle);
+            const ValidationResult drawValidation = ValidateDrawIndexedDesc(state.meshDrawDesc);
+            if (!drawValidation.valid)
+            {
+                message = drawValidation.message;
+                return false;
+            }
+
             D3D12_HEAP_PROPERTIES uploadHeap{};
             uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
 
             D3D12_RESOURCE_DESC vertexBufferDesc{};
             vertexBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            vertexBufferDesc.Width = sizeof(MeshVertex) * CubeVertices.size();
+            vertexBufferDesc.Width = sizeof(Renderer::SandboxMeshVertex) * vertices.size();
             vertexBufferDesc.Height = 1;
             vertexBufferDesc.DepthOrArraySize = 1;
             vertexBufferDesc.MipLevels = 1;
@@ -600,15 +582,15 @@ namespace HFEngine::RHI::DX12
             {
                 return false;
             }
-            std::memcpy(mappedData, CubeVertices.data(), sizeof(MeshVertex) * CubeVertices.size());
+            std::memcpy(mappedData, vertices.data(), sizeof(Renderer::SandboxMeshVertex) * vertices.size());
             state.vertexBuffer->Unmap(0, nullptr);
 
             state.vertexBufferView.BufferLocation = state.vertexBuffer->GetGPUVirtualAddress();
-            state.vertexBufferView.StrideInBytes = sizeof(MeshVertex);
-            state.vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(MeshVertex) * CubeVertices.size());
+            state.vertexBufferView.StrideInBytes = state.meshDrawDesc.vertexStrideBytes;
+            state.vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(Renderer::SandboxMeshVertex) * vertices.size());
 
             D3D12_RESOURCE_DESC indexBufferDesc = vertexBufferDesc;
-            indexBufferDesc.Width = sizeof(std::uint16_t) * CubeIndices.size();
+            indexBufferDesc.Width = sizeof(std::uint16_t) * indices.size();
             if (!Succeeded(
                     state.device->CreateCommittedResource(
                         &uploadHeap,
@@ -628,12 +610,12 @@ namespace HFEngine::RHI::DX12
             {
                 return false;
             }
-            std::memcpy(mappedData, CubeIndices.data(), sizeof(std::uint16_t) * CubeIndices.size());
+            std::memcpy(mappedData, indices.data(), sizeof(std::uint16_t) * indices.size());
             state.indexBuffer->Unmap(0, nullptr);
 
             state.indexBufferView.BufferLocation = state.indexBuffer->GetGPUVirtualAddress();
             state.indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-            state.indexBufferView.SizeInBytes = static_cast<UINT>(sizeof(std::uint16_t) * CubeIndices.size());
+            state.indexBufferView.SizeInBytes = static_cast<UINT>(sizeof(std::uint16_t) * indices.size());
 
             D3D12_RESOURCE_DESC constantBufferDesc = vertexBufferDesc;
             constantBufferDesc.Width = AlignConstantBufferSize(sizeof(FrameConstants));
@@ -761,6 +743,11 @@ namespace HFEngine::RHI::DX12
                 return false;
             }
 
+            if (!Renderer::ValidateSandboxCommandSequence(state.meshDrawDesc, window.Width(), window.Height(), message))
+            {
+                return false;
+            }
+
             UpdateFrameConstants(state, window);
             state.commandList->SetGraphicsRootSignature(state.rootSignature.Get());
             state.commandList->SetGraphicsRootConstantBufferView(0, state.frameConstantBuffer->GetGPUVirtualAddress());
@@ -791,7 +778,7 @@ namespace HFEngine::RHI::DX12
             state.commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             state.commandList->IASetVertexBuffers(0, 1, &state.vertexBufferView);
             state.commandList->IASetIndexBuffer(&state.indexBufferView);
-            state.commandList->DrawIndexedInstanced(static_cast<UINT>(CubeIndices.size()), 1, 0, 0, 0);
+            state.commandList->DrawIndexedInstanced(state.meshDrawDesc.indexCount, 1, 0, 0, 0);
 
             ImGui_ImplDX12_NewFrame();
             ImGui_ImplWin32_NewFrame();

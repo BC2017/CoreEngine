@@ -151,8 +151,69 @@ Foundation delivered:
 
 Next target:
 
-- Move mesh/pipeline resource ownership behind public RHI handles so scene
-  objects can submit through a backend-neutral path.
+- Move command recording and render submission behind backend-neutral RHI
+  interfaces instead of calling sandbox backend functions directly.
+
+## RHI Render Resource Foundation
+
+Branch: `codex/rhi-render-resource-foundation`
+
+Foundation delivered:
+
+- Public RHI buffer, texture, and graphics pipeline handle aliases using the
+  engine typed handle primitive.
+- Public `DrawIndexedDesc` and validation for indexed mesh submission.
+- Shared sandbox cube mesh data moved out of DX12/Vulkan backend files.
+- Shared sandbox mesh pipeline and draw descriptors consumed by both backend
+  renderers.
+- DX12 and Vulkan sandbox paths now validate shared pipeline/draw contracts and
+  use descriptor draw counts for indexed submission.
+- Unit tests cover indexed draw validation and shared sandbox mesh contracts.
+
+Next target:
+
+- Wrap backend frame execution behind a shared renderer-facing submission
+  interface, keeping DX12/Vulkan command emission private to backend modules.
+
+## RHI Command Contract Foundation
+
+Branch: `codex/rhi-command-contracts`
+
+Foundation delivered:
+
+- Backend-neutral command list descriptors and graphics render pass
+  descriptors.
+- Color/depth attachment validation for render pass setup.
+- Command sequence recorder that validates begin/end ordering, active render
+  pass requirements, pipeline binding, and indexed draw submission.
+- Public `ICommandList` contract expanded beyond placeholder `Begin/End`.
+- Shared sandbox frame command validation consumed before DX12 and Vulkan
+  backend command recording.
+- Unit tests cover valid graphics command recording and invalid sequencing.
+
+Next target:
+
+- Start scene-level submission by introducing entities/components for camera,
+  transform, and mesh instances that can feed the renderer-facing frame path.
+
+## Renderer Frame Submission Foundation
+
+Branch: `codex/renderer-frame-submission`
+
+Foundation delivered:
+
+- Renderer-facing sandbox frame submission API.
+- Backend-specific sandbox window titles centralized behind renderer code.
+- Sandbox executable no longer creates renderer windows or calls DX12/Vulkan
+  backend renderer functions directly.
+- GPU smoke tests exercise the renderer-facing frame submission path for both
+  DX12 and Vulkan.
+- Unit test coverage for backend-specific sandbox frame metadata.
+
+Next target:
+
+- Introduce a minimal scene/ECS slice with transform, camera, and mesh instance
+  data feeding the renderer submission path.
 
 ## Milestone 4: Frame Graph
 

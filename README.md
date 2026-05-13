@@ -61,7 +61,8 @@ backend. The mesh shader is authored once in Slang and compiled during the
 build to DXIL for DirectX 12 and SPIR-V for Vulkan. The sandbox currently
 renders a small indexed colored cube so both backends exercise vertex buffers,
 index buffers, depth testing, a shared camera view-projection constant buffer,
-and the ImGui overlay.
+shared RHI mesh draw contracts, backend-neutral command sequence validation,
+renderer-owned backend routing, and the ImGui overlay.
 
 After building Debug with Visual Studio:
 

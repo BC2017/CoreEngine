@@ -63,7 +63,10 @@ add_library(HFEngineCore STATIC
     src/Engine/Platform/Win32Window.cpp
     src/Engine/Renderer/Camera.cpp
     src/Engine/Renderer/FrameGraph.cpp
+    src/Engine/Renderer/SandboxFrameRenderer.cpp
+    src/Engine/Renderer/SandboxMesh.cpp
     src/Engine/RHI/BackendFactory.cpp
+    src/Engine/RHI/CommandList.cpp
     src/Engine/RHI/DX12/DX12SandboxRenderer.cpp
     src/Engine/RHI/Pipeline.cpp
     src/Engine/RHI/Resource.cpp

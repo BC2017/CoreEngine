@@ -1,8 +1,12 @@
 #include "Engine/RHI/Pipeline.hpp"
 #include "Engine/RHI/Resource.hpp"
+#include "Engine/RHI/CommandList.hpp"
+#include "Engine/Renderer/SandboxFrameRenderer.hpp"
+#include "Engine/Renderer/SandboxMesh.hpp"
 #include "TestHarness.hpp"
 
 #include <cstddef>
+#include <string_view>
 
 namespace
 {
@@ -99,6 +103,36 @@ HFENGINE_TEST_CASE("unit.rhi.resources", "RejectsDepthUsageWithoutDepthFormat")
     HFENGINE_REQUIRE(!result.valid);
 }
 
+HFENGINE_TEST_CASE("unit.rhi.resources", "ValidatesIndexedDrawDescriptor")
+{
+    HFEngine::RHI::DrawIndexedDesc desc;
+    desc.debugName = "cube draw";
+    desc.vertexBuffer = { 1, 1 };
+    desc.indexBuffer = { 2, 1 };
+    desc.vertexStrideBytes = sizeof(TestVertex);
+    desc.vertexCount = 24;
+    desc.indexFormat = HFEngine::RHI::IndexFormat::Uint16;
+    desc.indexCount = 36;
+
+    const HFEngine::RHI::ValidationResult result = HFEngine::RHI::ValidateDrawIndexedDesc(desc);
+
+    HFENGINE_REQUIRE(result.valid);
+}
+
+HFENGINE_TEST_CASE("unit.rhi.resources", "RejectsDrawWithoutValidBuffers")
+{
+    HFEngine::RHI::DrawIndexedDesc desc;
+    desc.debugName = "invalid draw";
+    desc.vertexStrideBytes = sizeof(TestVertex);
+    desc.vertexCount = 24;
+    desc.indexFormat = HFEngine::RHI::IndexFormat::Uint16;
+    desc.indexCount = 36;
+
+    const HFEngine::RHI::ValidationResult result = HFEngine::RHI::ValidateDrawIndexedDesc(desc);
+
+    HFENGINE_REQUIRE(!result.valid);
+}
+
 HFENGINE_TEST_CASE("unit.rhi.pipeline", "ValidatesMeshPipelineDescriptor")
 {
     const HFEngine::RHI::GraphicsPipelineDesc desc = MakeValidPipelineDesc();
@@ -106,6 +140,49 @@ HFENGINE_TEST_CASE("unit.rhi.pipeline", "ValidatesMeshPipelineDescriptor")
     const HFEngine::RHI::ValidationResult result = HFEngine::RHI::ValidateGraphicsPipelineDesc(desc);
 
     HFENGINE_REQUIRE(result.valid);
+}
+
+HFENGINE_TEST_CASE("unit.rhi.commands", "RecordsValidGraphicsDrawSequence")
+{
+    HFEngine::RHI::CommandListRecorder recorder;
+    const HFEngine::RHI::DrawIndexedDesc draw =
+        HFEngine::Renderer::BuildSandboxMeshDrawDesc({ 1, 1 }, { 2, 1 });
+
+    const bool recorded =
+        recorder.Begin({ "test command list", HFEngine::RHI::CommandQueueType::Graphics }) &&
+        recorder.BeginRenderPass(HFEngine::Renderer::BuildSandboxRenderPassDesc(640, 480, { 3, 1 }, { 4, 1 })) &&
+        recorder.BindGraphicsPipeline({ 5, 1 }) &&
+        recorder.DrawIndexed(draw) &&
+        recorder.EndRenderPass() &&
+        recorder.End();
+
+    HFENGINE_REQUIRE(recorded);
+    HFENGINE_REQUIRE(recorder.Status().valid);
+    HFENGINE_REQUIRE(recorder.Commands().size() == 6);
+}
+
+HFENGINE_TEST_CASE("unit.rhi.commands", "RejectsDrawWithoutBoundPipeline")
+{
+    HFEngine::RHI::CommandListRecorder recorder;
+    const HFEngine::RHI::DrawIndexedDesc draw =
+        HFEngine::Renderer::BuildSandboxMeshDrawDesc({ 1, 1 }, { 2, 1 });
+
+    HFENGINE_REQUIRE(recorder.Begin({ "test command list", HFEngine::RHI::CommandQueueType::Graphics }));
+    HFENGINE_REQUIRE(recorder.BeginRenderPass(HFEngine::Renderer::BuildSandboxRenderPassDesc(640, 480, { 3, 1 }, { 4, 1 })));
+    HFENGINE_REQUIRE(!recorder.DrawIndexed(draw));
+    HFENGINE_REQUIRE(!recorder.Status().valid);
+}
+
+HFENGINE_TEST_CASE("unit.rhi.commands", "RejectsRenderPassWithoutAttachments")
+{
+    HFEngine::RHI::RenderPassDesc pass;
+    pass.debugName = "empty pass";
+    pass.width = 640;
+    pass.height = 480;
+
+    const HFEngine::RHI::ValidationResult result = HFEngine::RHI::ValidateRenderPassDesc(pass);
+
+    HFENGINE_REQUIRE(!result.valid);
 }
 
 HFENGINE_TEST_CASE("unit.rhi.pipeline", "RejectsMissingShaderEntryPoint")
@@ -116,6 +193,26 @@ HFENGINE_TEST_CASE("unit.rhi.pipeline", "RejectsMissingShaderEntryPoint")
     const HFEngine::RHI::ValidationResult result = HFEngine::RHI::ValidateGraphicsPipelineDesc(desc);
 
     HFENGINE_REQUIRE(!result.valid);
+}
+
+HFENGINE_TEST_CASE("unit.renderer.sandboxmesh", "BuildsValidSharedMeshContracts")
+{
+    const HFEngine::RHI::GraphicsPipelineDesc pipeline = HFEngine::Renderer::BuildSandboxMeshPipelineDesc();
+    const HFEngine::RHI::DrawIndexedDesc draw =
+        HFEngine::Renderer::BuildSandboxMeshDrawDesc({ 1, 1 }, { 2, 1 });
+
+    HFENGINE_REQUIRE(HFEngine::RHI::ValidateGraphicsPipelineDesc(pipeline).valid);
+    HFENGINE_REQUIRE(HFEngine::RHI::ValidateDrawIndexedDesc(draw).valid);
+    HFENGINE_REQUIRE(HFEngine::Renderer::SandboxCubeVertices().size() == draw.vertexCount);
+    HFENGINE_REQUIRE(HFEngine::Renderer::SandboxCubeIndices().size() == draw.indexCount);
+}
+
+HFENGINE_TEST_CASE("unit.renderer.sandboxframe", "SelectsBackendSpecificWindowTitles")
+{
+    HFENGINE_REQUIRE(std::wstring_view(HFEngine::Renderer::SandboxWindowTitle(HFEngine::RHI::RendererBackend::DirectX12)) ==
+                     L"HFEngine - DirectX 12 Mesh");
+    HFENGINE_REQUIRE(std::wstring_view(HFEngine::Renderer::SandboxWindowTitle(HFEngine::RHI::RendererBackend::Vulkan)) ==
+                     L"HFEngine - Vulkan Mesh");
 }
 
 HFENGINE_TEST_CASE("unit.rhi.pipeline", "RejectsAttributePastVertexStride")

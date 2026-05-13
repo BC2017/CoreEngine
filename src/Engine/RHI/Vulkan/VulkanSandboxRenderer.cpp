@@ -1,6 +1,7 @@
 #include "Engine/RHI/Vulkan/VulkanSandboxRenderer.hpp"
 
 #include "Engine/Renderer/Camera.hpp"
+#include "Engine/Renderer/SandboxMesh.hpp"
 #include "Engine/Tools/RuntimeDebugOverlay.hpp"
 
 #define WIN32_LEAN_AND_MEAN
@@ -31,52 +32,13 @@ namespace HFEngine::RHI::Vulkan
     {
         constexpr VkFormat DepthFormat = VK_FORMAT_D32_SFLOAT;
 
-        struct MeshVertex
-        {
-            float position[3];
-            float color[4];
-        };
-
         struct FrameConstants
         {
             Math::Mat4 viewProjection;
         };
 
-        constexpr std::array<MeshVertex, 24> CubeVertices{
-            MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, -0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, 0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, 0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, -0.5f }, { 0.10f, 0.58f, 0.92f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, -0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, -0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, 0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, 0.5f }, { 0.18f, 0.72f, 0.28f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, 0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, -0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, 0.5f }, { 0.82f, 0.66f, 0.18f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, 0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, 0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, -0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.78f, 0.30f, 0.92f, 1.0f } },
-            MeshVertex{ { 0.5f, -0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
-            MeshVertex{ { -0.5f, -0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
-            MeshVertex{ { -0.5f, 0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
-            MeshVertex{ { 0.5f, 0.5f, 0.5f }, { 0.14f, 0.82f, 0.78f, 1.0f } },
-        };
-
-        constexpr std::array<std::uint16_t, 36> CubeIndices{
-            0, 1, 2, 0, 2, 3,
-            4, 5, 6, 4, 6, 7,
-            8, 9, 10, 8, 10, 11,
-            12, 13, 14, 12, 14, 15,
-            16, 17, 18, 16, 18, 19,
-            20, 21, 22, 20, 22, 23,
-        };
+        constexpr BufferHandle SandboxVertexBufferHandle{ 1u, 1u };
+        constexpr BufferHandle SandboxIndexBufferHandle{ 2u, 1u };
 
         struct QueueFamilySelection
         {
@@ -295,6 +257,7 @@ namespace HFEngine::RHI::Vulkan
             VkFence inFlight = VK_NULL_HANDLE;
             std::uint32_t queueFamily = 0;
             std::uint32_t minImageCount = 2;
+            DrawIndexedDesc meshDrawDesc;
             std::string adapterName;
 
             ~VulkanState()
@@ -583,7 +546,18 @@ namespace HFEngine::RHI::Vulkan
 
         bool CreateMeshBuffers(VulkanState& state, std::string& message)
         {
-            const VkDeviceSize vertexSize = sizeof(MeshVertex) * CubeVertices.size();
+            const std::span<const Renderer::SandboxMeshVertex> vertices = Renderer::SandboxCubeVertices();
+            const std::span<const std::uint16_t> indices = Renderer::SandboxCubeIndices();
+
+            state.meshDrawDesc = Renderer::BuildSandboxMeshDrawDesc(SandboxVertexBufferHandle, SandboxIndexBufferHandle);
+            const ValidationResult drawValidation = ValidateDrawIndexedDesc(state.meshDrawDesc);
+            if (!drawValidation.valid)
+            {
+                message = drawValidation.message;
+                return false;
+            }
+
+            const VkDeviceSize vertexSize = sizeof(Renderer::SandboxMeshVertex) * vertices.size();
             if (!CreateBuffer(
                     state,
                     vertexSize,
@@ -591,12 +565,12 @@ namespace HFEngine::RHI::Vulkan
                     state.vertexBuffer,
                     state.vertexBufferMemory,
                     message) ||
-                !UploadBufferData(state, state.vertexBufferMemory, CubeVertices.data(), vertexSize, message))
+                !UploadBufferData(state, state.vertexBufferMemory, vertices.data(), vertexSize, message))
             {
                 return false;
             }
 
-            const VkDeviceSize indexSize = sizeof(std::uint16_t) * CubeIndices.size();
+            const VkDeviceSize indexSize = sizeof(std::uint16_t) * indices.size();
             return CreateBuffer(
                        state,
                        indexSize,
@@ -604,7 +578,7 @@ namespace HFEngine::RHI::Vulkan
                        state.indexBuffer,
                        state.indexBufferMemory,
                        message) &&
-                   UploadBufferData(state, state.indexBufferMemory, CubeIndices.data(), indexSize, message);
+                   UploadBufferData(state, state.indexBufferMemory, indices.data(), indexSize, message);
         }
 
         bool CreateFrameConstantResources(VulkanState& state, std::string& message)
@@ -872,6 +846,14 @@ namespace HFEngine::RHI::Vulkan
 
         bool CreatePipeline(VulkanState& state, std::string& message)
         {
+            const GraphicsPipelineDesc pipelineContract = Renderer::BuildSandboxMeshPipelineDesc();
+            const ValidationResult pipelineValidation = ValidateGraphicsPipelineDesc(pipelineContract);
+            if (!pipelineValidation.valid)
+            {
+                message = pipelineValidation.message;
+                return false;
+            }
+
             const std::string shaderDir = ExecutableDirectory();
             const std::vector<std::uint32_t> vertexSpirv = ReadSpirv(shaderDir + "\\Mesh.vert.spv");
             const std::vector<std::uint32_t> fragmentSpirv = ReadSpirv(shaderDir + "\\Mesh.frag.spv");
@@ -903,18 +885,18 @@ namespace HFEngine::RHI::Vulkan
 
             VkVertexInputBindingDescription binding{};
             binding.binding = 0;
-            binding.stride = sizeof(MeshVertex);
+            binding.stride = pipelineContract.vertexLayouts[0].strideBytes;
             binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
             VkVertexInputAttributeDescription attributes[2]{};
             attributes[0].binding = 0;
             attributes[0].location = 0;
             attributes[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributes[0].offset = static_cast<std::uint32_t>(offsetof(MeshVertex, position));
+            attributes[0].offset = static_cast<std::uint32_t>(offsetof(Renderer::SandboxMeshVertex, position));
             attributes[1].binding = 0;
             attributes[1].location = 1;
             attributes[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-            attributes[1].offset = static_cast<std::uint32_t>(offsetof(MeshVertex, color));
+            attributes[1].offset = static_cast<std::uint32_t>(offsetof(Renderer::SandboxMeshVertex, color));
 
             vertexInput.vertexBindingDescriptionCount = 1;
             vertexInput.pVertexBindingDescriptions = &binding;
@@ -1095,6 +1077,15 @@ namespace HFEngine::RHI::Vulkan
                 return false;
             }
 
+            if (!Renderer::ValidateSandboxCommandSequence(
+                    state.meshDrawDesc,
+                    state.swapchainExtent.width,
+                    state.swapchainExtent.height,
+                    message))
+            {
+                return false;
+            }
+
             VkClearValue clearValues[2]{};
             clearValues[0].color = { { 0.025f, 0.035f, 0.055f, 1.0f } };
             clearValues[1].depthStencil = { 1.0f, 0 };
@@ -1122,7 +1113,7 @@ namespace HFEngine::RHI::Vulkan
             const VkDeviceSize vertexOffset = 0;
             vkCmdBindVertexBuffers(state.commandBuffer, 0, 1, &state.vertexBuffer, &vertexOffset);
             vkCmdBindIndexBuffer(state.commandBuffer, state.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-            vkCmdDrawIndexed(state.commandBuffer, static_cast<std::uint32_t>(CubeIndices.size()), 1, 0, 0, 0);
+            vkCmdDrawIndexed(state.commandBuffer, state.meshDrawDesc.indexCount, 1, 0, 0, 0);
 
             ImGui_ImplVulkan_NewFrame();
             ImGui_ImplWin32_NewFrame();
