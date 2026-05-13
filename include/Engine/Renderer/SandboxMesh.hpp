@@ -1,9 +1,11 @@
 #pragma once
 
+#include "Engine/RHI/CommandList.hpp"
 #include "Engine/RHI/Pipeline.hpp"
 
 #include <cstdint>
 #include <span>
+#include <string>
 
 namespace HFEngine::Renderer
 {
@@ -19,4 +21,14 @@ namespace HFEngine::Renderer
     [[nodiscard]] RHI::DrawIndexedDesc BuildSandboxMeshDrawDesc(
         RHI::BufferHandle vertexBuffer,
         RHI::BufferHandle indexBuffer);
+    [[nodiscard]] RHI::RenderPassDesc BuildSandboxRenderPassDesc(
+        std::uint32_t width,
+        std::uint32_t height,
+        RHI::TextureHandle colorTarget,
+        RHI::TextureHandle depthTarget);
+    [[nodiscard]] bool ValidateSandboxCommandSequence(
+        const RHI::DrawIndexedDesc& draw,
+        std::uint32_t width,
+        std::uint32_t height,
+        std::string& message);
 }

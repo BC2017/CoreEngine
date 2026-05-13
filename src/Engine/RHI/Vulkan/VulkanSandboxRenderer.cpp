@@ -1077,6 +1077,15 @@ namespace HFEngine::RHI::Vulkan
                 return false;
             }
 
+            if (!Renderer::ValidateSandboxCommandSequence(
+                    state.meshDrawDesc,
+                    state.swapchainExtent.width,
+                    state.swapchainExtent.height,
+                    message))
+            {
+                return false;
+            }
+
             VkClearValue clearValues[2]{};
             clearValues[0].color = { { 0.025f, 0.035f, 0.055f, 1.0f } };
             clearValues[1].depthStencil = { 1.0f, 0 };
