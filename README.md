@@ -60,7 +60,8 @@ engine core can initialize and shut down cleanly with a selected renderer
 backend. The mesh shader is authored once in Slang and compiled during the
 build to DXIL for DirectX 12 and SPIR-V for Vulkan. The sandbox currently
 renders a small indexed colored cube so both backends exercise vertex buffers,
-index buffers, depth testing, and the ImGui overlay.
+index buffers, depth testing, a shared camera view-projection constant buffer,
+and the ImGui overlay.
 
 After building Debug with Visual Studio:
 

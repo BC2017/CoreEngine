@@ -96,6 +96,9 @@ revised.
   perspective projection, and depth testing in both backends.
 - 2026-05-12: Renamed remaining triangle-era backend sandbox renderer files and
   APIs to neutral sandbox renderer names.
+- 2026-05-12: Moved sandbox camera projection out of shader literals and into a
+  shared CPU-built view-projection matrix bound through DX12 constant buffers
+  and Vulkan uniform descriptors.
 
 ## 4. Architecture Principles
 
