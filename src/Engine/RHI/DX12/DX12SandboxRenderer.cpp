@@ -1,5 +1,6 @@
 #include "Engine/RHI/DX12/DX12SandboxRenderer.hpp"
 
+#include "Engine/Renderer/Camera.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
 #include "Engine/Tools/RuntimeDebugOverlay.hpp"
 
@@ -37,6 +38,16 @@ namespace HFEngine::RHI::DX12
             float position[3];
             float color[4];
         };
+
+        struct FrameConstants
+        {
+            Math::Mat4 viewProjection;
+        };
+
+        constexpr UINT64 AlignConstantBufferSize(UINT64 size)
+        {
+            return (size + 255u) & ~255u;
+        }
 
         constexpr std::array<MeshVertex, 24> CubeVertices{
             MeshVertex{ { -0.5f, -0.5f, -0.5f }, { 0.92f, 0.18f, 0.16f, 1.0f } },
@@ -180,8 +191,10 @@ namespace HFEngine::RHI::DX12
             ComPtr<ID3D12GraphicsCommandList> commandList;
             ComPtr<ID3D12Resource> vertexBuffer;
             ComPtr<ID3D12Resource> indexBuffer;
+            ComPtr<ID3D12Resource> frameConstantBuffer;
             D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
             D3D12_INDEX_BUFFER_VIEW indexBufferView{};
+            void* frameConstantBufferMapped = nullptr;
             ComPtr<ID3D12Fence> fence;
             HANDLE fenceEvent = nullptr;
             UINT rtvDescriptorSize = 0;
@@ -192,6 +205,12 @@ namespace HFEngine::RHI::DX12
 
             ~Dx12State()
             {
+                if (frameConstantBuffer != nullptr && frameConstantBufferMapped != nullptr)
+                {
+                    frameConstantBuffer->Unmap(0, nullptr);
+                    frameConstantBufferMapped = nullptr;
+                }
+
                 if (fenceEvent != nullptr)
                 {
                     CloseHandle(fenceEvent);
@@ -452,7 +471,15 @@ namespace HFEngine::RHI::DX12
 
         bool InitializePipeline(Dx12State& state, std::string& message)
         {
+            D3D12_ROOT_PARAMETER rootParameters[1]{};
+            rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+            rootParameters[0].Descriptor.ShaderRegister = 0;
+            rootParameters[0].Descriptor.RegisterSpace = 0;
+            rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
             D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
+            rootSignatureDesc.NumParameters = 1;
+            rootSignatureDesc.pParameters = rootParameters;
             rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
             ComPtr<ID3DBlob> signature;
@@ -608,6 +635,30 @@ namespace HFEngine::RHI::DX12
             state.indexBufferView.Format = DXGI_FORMAT_R16_UINT;
             state.indexBufferView.SizeInBytes = static_cast<UINT>(sizeof(std::uint16_t) * CubeIndices.size());
 
+            D3D12_RESOURCE_DESC constantBufferDesc = vertexBufferDesc;
+            constantBufferDesc.Width = AlignConstantBufferSize(sizeof(FrameConstants));
+            if (!Succeeded(
+                    state.device->CreateCommittedResource(
+                        &uploadHeap,
+                        D3D12_HEAP_FLAG_NONE,
+                        &constantBufferDesc,
+                        D3D12_RESOURCE_STATE_GENERIC_READ,
+                        nullptr,
+                        IID_PPV_ARGS(&state.frameConstantBuffer)),
+                    message,
+                    "CreateCommittedResource(frame constants)"))
+            {
+                return false;
+            }
+
+            if (!Succeeded(
+                    state.frameConstantBuffer->Map(0, &readRange, &state.frameConstantBufferMapped),
+                    message,
+                    "Map(frame constants)"))
+            {
+                return false;
+            }
+
             D3D12_HEAP_PROPERTIES defaultHeap{};
             defaultHeap.Type = D3D12_HEAP_TYPE_DEFAULT;
 
@@ -660,6 +711,12 @@ namespace HFEngine::RHI::DX12
             return true;
         }
 
+        void UpdateFrameConstants(Dx12State& state, Platform::Win32Window& window)
+        {
+            const FrameConstants constants{ Renderer::BuildSandboxViewProjection(window.Width(), window.Height()) };
+            std::memcpy(state.frameConstantBufferMapped, &constants, sizeof(constants));
+        }
+
         bool WaitForGpu(Dx12State& state, std::string& message)
         {
             const UINT64 fence = state.fenceValue;
@@ -704,7 +761,9 @@ namespace HFEngine::RHI::DX12
                 return false;
             }
 
+            UpdateFrameConstants(state, window);
             state.commandList->SetGraphicsRootSignature(state.rootSignature.Get());
+            state.commandList->SetGraphicsRootConstantBufferView(0, state.frameConstantBuffer->GetGPUVirtualAddress());
 
             D3D12_VIEWPORT viewport{};
             viewport.Width = static_cast<float>(window.Width());

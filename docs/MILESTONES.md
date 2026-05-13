@@ -128,7 +128,31 @@ Foundation delivered:
 
 Next target:
 
-- Start moving shader/pipeline creation behind the public RHI descriptors.
+- Establish real camera/view-projection data flow through backend constant
+  resources before adding scene transforms, materials, and loaded assets.
+
+## Camera Constant Buffer Foundation
+
+Branch: `codex/camera-constant-buffer-foundation`
+
+Foundation delivered:
+
+- Minimal engine math library with row-vector, row-major matrix helpers for the
+  engine's left-handed world convention.
+- Sandbox camera helper that builds a shared view-projection matrix from the
+  active window aspect ratio.
+- Shared Slang mesh shader now consumes `FrameConstants` instead of hardcoded
+  projection math.
+- DX12 path binds the camera matrix through a root CBV.
+- Vulkan path binds the same camera matrix through descriptor set 0, binding 0
+  as a uniform buffer.
+- Unit tests cover perspective depth mapping, look-at behavior, and sandbox
+  camera visibility.
+
+Next target:
+
+- Move mesh/pipeline resource ownership behind public RHI handles so scene
+  objects can submit through a backend-neutral path.
 
 ## Milestone 4: Frame Graph
 

@@ -1,5 +1,6 @@
 #include "Engine/RHI/Vulkan/VulkanSandboxRenderer.hpp"
 
+#include "Engine/Renderer/Camera.hpp"
 #include "Engine/Tools/RuntimeDebugOverlay.hpp"
 
 #define WIN32_LEAN_AND_MEAN
@@ -34,6 +35,11 @@ namespace HFEngine::RHI::Vulkan
         {
             float position[3];
             float color[4];
+        };
+
+        struct FrameConstants
+        {
+            Math::Mat4 viewProjection;
         };
 
         constexpr std::array<MeshVertex, 24> CubeVertices{
@@ -273,6 +279,11 @@ namespace HFEngine::RHI::Vulkan
             VkImage depthImage = VK_NULL_HANDLE;
             VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
             VkImageView depthImageView = VK_NULL_HANDLE;
+            VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+            VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+            VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+            VkBuffer frameUniformBuffer = VK_NULL_HANDLE;
+            VkDeviceMemory frameUniformBufferMemory = VK_NULL_HANDLE;
             VkBuffer vertexBuffer = VK_NULL_HANDLE;
             VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
             VkBuffer indexBuffer = VK_NULL_HANDLE;
@@ -299,6 +310,12 @@ namespace HFEngine::RHI::Vulkan
                         vkDestroySemaphore(device, imageAvailable, nullptr);
                     if (commandPool != VK_NULL_HANDLE)
                         vkDestroyCommandPool(device, commandPool, nullptr);
+                    if (descriptorPool != VK_NULL_HANDLE)
+                        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+                    if (frameUniformBuffer != VK_NULL_HANDLE)
+                        vkDestroyBuffer(device, frameUniformBuffer, nullptr);
+                    if (frameUniformBufferMemory != VK_NULL_HANDLE)
+                        vkFreeMemory(device, frameUniformBufferMemory, nullptr);
                     if (indexBuffer != VK_NULL_HANDLE)
                         vkDestroyBuffer(device, indexBuffer, nullptr);
                     if (indexBufferMemory != VK_NULL_HANDLE)
@@ -311,6 +328,8 @@ namespace HFEngine::RHI::Vulkan
                         vkDestroyPipeline(device, pipeline, nullptr);
                     if (pipelineLayout != VK_NULL_HANDLE)
                         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+                    if (descriptorSetLayout != VK_NULL_HANDLE)
+                        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
                     for (VkFramebuffer framebuffer : framebuffers)
                         vkDestroyFramebuffer(device, framebuffer, nullptr);
                     if (renderPass != VK_NULL_HANDLE)
@@ -588,6 +607,95 @@ namespace HFEngine::RHI::Vulkan
                    UploadBufferData(state, state.indexBufferMemory, CubeIndices.data(), indexSize, message);
         }
 
+        bool CreateFrameConstantResources(VulkanState& state, std::string& message)
+        {
+            if (!CreateBuffer(
+                    state,
+                    sizeof(FrameConstants),
+                    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                    state.frameUniformBuffer,
+                    state.frameUniformBufferMemory,
+                    message))
+            {
+                return false;
+            }
+
+            VkDescriptorSetLayoutBinding frameBinding{};
+            frameBinding.binding = 0;
+            frameBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            frameBinding.descriptorCount = 1;
+            frameBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+            VkDescriptorSetLayoutCreateInfo layoutInfo{};
+            layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            layoutInfo.bindingCount = 1;
+            layoutInfo.pBindings = &frameBinding;
+            if (!VkSucceeded(
+                    vkCreateDescriptorSetLayout(state.device, &layoutInfo, nullptr, &state.descriptorSetLayout),
+                    message,
+                    "vkCreateDescriptorSetLayout"))
+            {
+                return false;
+            }
+
+            VkDescriptorPoolSize poolSize{};
+            poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            poolSize.descriptorCount = 1;
+
+            VkDescriptorPoolCreateInfo poolInfo{};
+            poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            poolInfo.maxSets = 1;
+            poolInfo.poolSizeCount = 1;
+            poolInfo.pPoolSizes = &poolSize;
+            if (!VkSucceeded(
+                    vkCreateDescriptorPool(state.device, &poolInfo, nullptr, &state.descriptorPool),
+                    message,
+                    "vkCreateDescriptorPool(frame constants)"))
+            {
+                return false;
+            }
+
+            VkDescriptorSetAllocateInfo allocateInfo{};
+            allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            allocateInfo.descriptorPool = state.descriptorPool;
+            allocateInfo.descriptorSetCount = 1;
+            allocateInfo.pSetLayouts = &state.descriptorSetLayout;
+            if (!VkSucceeded(
+                    vkAllocateDescriptorSets(state.device, &allocateInfo, &state.descriptorSet),
+                    message,
+                    "vkAllocateDescriptorSets(frame constants)"))
+            {
+                return false;
+            }
+
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = state.frameUniformBuffer;
+            bufferInfo.range = sizeof(FrameConstants);
+
+            VkWriteDescriptorSet write{};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = state.descriptorSet;
+            write.dstBinding = 0;
+            write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            write.pBufferInfo = &bufferInfo;
+            vkUpdateDescriptorSets(state.device, 1, &write, 0, nullptr);
+            return true;
+        }
+
+        bool UpdateFrameConstants(VulkanState& state, std::string& message)
+        {
+            const FrameConstants constants{
+                Renderer::BuildSandboxViewProjection(state.swapchainExtent.width, state.swapchainExtent.height)
+            };
+            return UploadBufferData(
+                state,
+                state.frameUniformBufferMemory,
+                &constants,
+                sizeof(constants),
+                message);
+        }
+
         bool CreateDepthResources(VulkanState& state, std::string& message)
         {
             VkImageCreateInfo imageInfo{};
@@ -860,6 +968,8 @@ namespace HFEngine::RHI::Vulkan
 
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = 1;
+            pipelineLayoutInfo.pSetLayouts = &state.descriptorSetLayout;
             if (!VkSucceeded(
                     vkCreatePipelineLayout(state.device, &pipelineLayoutInfo, nullptr, &state.pipelineLayout),
                     message,
@@ -964,6 +1074,7 @@ namespace HFEngine::RHI::Vulkan
                    CreateSwapchain(state, window, message) &&
                    CreateDepthResources(state, message) &&
                    CreateRenderPass(state, message) &&
+                   CreateFrameConstantResources(state, message) &&
                    CreatePipeline(state, message) &&
                    CreateFramebuffers(state, message) &&
                    CreateMeshBuffers(state, message) &&
@@ -998,6 +1109,15 @@ namespace HFEngine::RHI::Vulkan
 
             vkCmdBeginRenderPass(state.commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
             vkCmdBindPipeline(state.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state.pipeline);
+            vkCmdBindDescriptorSets(
+                state.commandBuffer,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                state.pipelineLayout,
+                0,
+                1,
+                &state.descriptorSet,
+                0,
+                nullptr);
 
             const VkDeviceSize vertexOffset = 0;
             vkCmdBindVertexBuffers(state.commandBuffer, 0, 1, &state.vertexBuffer, &vertexOffset);
@@ -1041,6 +1161,11 @@ namespace HFEngine::RHI::Vulkan
             }
 
             vkResetCommandBuffer(state.commandBuffer, 0);
+            if (!UpdateFrameConstants(state, message))
+            {
+                return false;
+            }
+
             if (!RecordCommandBuffer(config, state, imageIndex, framesRendered, message))
             {
                 return false;
