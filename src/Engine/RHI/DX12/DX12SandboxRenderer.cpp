@@ -743,6 +743,11 @@ namespace HFEngine::RHI::DX12
                 return false;
             }
 
+            if (!Renderer::ValidateSandboxCommandSequence(state.meshDrawDesc, window.Width(), window.Height(), message))
+            {
+                return false;
+            }
+
             UpdateFrameConstants(state, window);
             state.commandList->SetGraphicsRootSignature(state.rootSignature.Get());
             state.commandList->SetGraphicsRootConstantBufferView(0, state.frameConstantBuffer->GetGPUVirtualAddress());

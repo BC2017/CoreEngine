@@ -172,8 +172,29 @@ Foundation delivered:
 
 Next target:
 
-- Introduce backend-neutral command list/render pass interfaces so scene-level
-  renderer code can submit draws without directly calling DX12 or Vulkan paths.
+- Wrap backend frame execution behind a shared renderer-facing submission
+  interface, keeping DX12/Vulkan command emission private to backend modules.
+
+## RHI Command Contract Foundation
+
+Branch: `codex/rhi-command-contracts`
+
+Foundation delivered:
+
+- Backend-neutral command list descriptors and graphics render pass
+  descriptors.
+- Color/depth attachment validation for render pass setup.
+- Command sequence recorder that validates begin/end ordering, active render
+  pass requirements, pipeline binding, and indexed draw submission.
+- Public `ICommandList` contract expanded beyond placeholder `Begin/End`.
+- Shared sandbox frame command validation consumed before DX12 and Vulkan
+  backend command recording.
+- Unit tests cover valid graphics command recording and invalid sequencing.
+
+Next target:
+
+- Create a renderer-facing frame submission API that owns backend selection and
+  routes validated command plans into DX12 or Vulkan implementations.
 
 ## Milestone 4: Frame Graph
 
