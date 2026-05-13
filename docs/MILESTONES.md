@@ -212,8 +212,31 @@ Foundation delivered:
 
 Next target:
 
-- Introduce a minimal scene/ECS slice with transform, camera, and mesh instance
-  data feeding the renderer submission path.
+- Add per-object GPU transform constants so scene mesh instances can render
+  with unique world transforms instead of only validating CPU-side scene data.
+
+## Minimal Scene/ECS Foundation
+
+Branch: `codex/minimal-scene-ecs`
+
+Foundation delivered:
+
+- EnTT added as an active git submodule under `external/entt`.
+- Engine-owned scene wrapper hides direct `entt::registry` usage from renderer
+  and sandbox code.
+- Scene entities support name, transform, camera, and mesh instance
+  components.
+- Scene render extraction produces a primary camera and mesh draw list for
+  renderer submission.
+- Sandbox renderer path now builds and validates a default ECS-backed scene
+  before backend routing.
+- Unit tests cover entity lifecycle, component extraction, destroyed entities,
+  and default sandbox scene render data.
+
+Next target:
+
+- Add per-object transform constants and submit at least one scene mesh
+  instance through GPU model/view/projection data.
 
 ## Milestone 4: Frame Graph
 

@@ -5,10 +5,10 @@ Third-party dependencies are managed as git submodules under this directory.
 Active submodules:
 
 - `imgui`: Dear ImGui runtime/debug tooling and future editor UI.
+- `entt`: ECS registry used behind the engine scene wrapper.
 
 Planned baseline:
 
-- EnTT for ECS.
 - Slang source/compiler integration if engine-owned reflection or compiler
   library use requires vendoring it. The current build consumes `slangc` from
   the Vulkan SDK.

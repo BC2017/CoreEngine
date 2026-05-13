@@ -106,6 +106,8 @@ revised.
 - 2026-05-12: Added a renderer-facing sandbox frame submission API so sandbox
   runtime code no longer selects or calls DX12/Vulkan backend renderers
   directly.
+- 2026-05-12: Added EnTT as an active git submodule and introduced the first
+  engine scene wrapper with transform, camera, and mesh instance components.
 
 ## 4. Architecture Principles
 

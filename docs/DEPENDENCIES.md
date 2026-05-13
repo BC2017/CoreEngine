@@ -7,6 +7,7 @@ rather than vendored.
 ## Active Submodules
 
 - `external/imgui`: Dear ImGui runtime/debug tooling and future editor UI.
+- `external/entt`: ECS registry used behind the engine scene wrapper.
 
 ## Active SDK Tools
 
@@ -16,7 +17,6 @@ rather than vendored.
 
 ## Planned Baseline
 
-- EnTT: ECS.
 - Dear ImGui: active submodule for runtime/debug tooling first, full editor
   later.
 - Slang: currently consumed through the Vulkan SDK compiler. A source submodule
