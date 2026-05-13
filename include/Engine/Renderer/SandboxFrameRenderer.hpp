@@ -2,6 +2,7 @@
 
 #include "Engine/Core/Engine.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
+#include "Engine/Scene/Scene.hpp"
 
 #include <string>
 
@@ -17,5 +18,6 @@ namespace HFEngine::Renderer
     };
 
     [[nodiscard]] const wchar_t* SandboxWindowTitle(RHI::RendererBackend backend) noexcept;
+    [[nodiscard]] Scene::SceneRenderData BuildSandboxSceneRenderData();
     [[nodiscard]] SandboxFrameRenderResult RunSandboxFrameRenderer(const Core::EngineConfig& config);
 }

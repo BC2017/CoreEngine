@@ -71,6 +71,7 @@ add_library(HFEngineCore STATIC
     src/Engine/RHI/Pipeline.cpp
     src/Engine/RHI/Resource.cpp
     src/Engine/RHI/RendererBackend.cpp
+    src/Engine/Scene/Scene.cpp
     src/Engine/RHI/Vulkan/VulkanSandboxRenderer.cpp
     src/Engine/Tools/RuntimeDebugOverlay.cpp
     src/Engine/Core/Version.cpp
@@ -79,6 +80,7 @@ add_library(HFEngineCore STATIC
 target_include_directories(HFEngineCore
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/entt/src
         ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui
         ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends
 )
@@ -217,6 +219,7 @@ if(HFENGINE_BUILD_TESTS)
         tests/unit/FrameGraphTests.cpp
         tests/unit/MathCameraTests.cpp
         tests/unit/RhiContractTests.cpp
+        tests/unit/SceneEcsTests.cpp
     )
 
     hfengine_add_test(HFEngineIntegrationTests integration
