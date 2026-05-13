@@ -99,6 +99,8 @@ revised.
 - 2026-05-12: Moved sandbox camera projection out of shader literals and into a
   shared CPU-built view-projection matrix bound through DX12 constant buffers
   and Vulkan uniform descriptors.
+- 2026-05-12: Added public RHI resource handles, indexed draw descriptors, and
+  shared sandbox mesh contracts consumed by both backend renderers.
 
 ## 4. Architecture Principles
 
