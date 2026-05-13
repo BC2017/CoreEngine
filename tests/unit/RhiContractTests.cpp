@@ -1,5 +1,6 @@
 #include "Engine/RHI/Pipeline.hpp"
 #include "Engine/RHI/Resource.hpp"
+#include "Engine/RHI/CommandList.hpp"
 #include "Engine/Renderer/SandboxMesh.hpp"
 #include "TestHarness.hpp"
 
@@ -137,6 +138,49 @@ HFENGINE_TEST_CASE("unit.rhi.pipeline", "ValidatesMeshPipelineDescriptor")
     const HFEngine::RHI::ValidationResult result = HFEngine::RHI::ValidateGraphicsPipelineDesc(desc);
 
     HFENGINE_REQUIRE(result.valid);
+}
+
+HFENGINE_TEST_CASE("unit.rhi.commands", "RecordsValidGraphicsDrawSequence")
+{
+    HFEngine::RHI::CommandListRecorder recorder;
+    const HFEngine::RHI::DrawIndexedDesc draw =
+        HFEngine::Renderer::BuildSandboxMeshDrawDesc({ 1, 1 }, { 2, 1 });
+
+    const bool recorded =
+        recorder.Begin({ "test command list", HFEngine::RHI::CommandQueueType::Graphics }) &&
+        recorder.BeginRenderPass(HFEngine::Renderer::BuildSandboxRenderPassDesc(640, 480, { 3, 1 }, { 4, 1 })) &&
+        recorder.BindGraphicsPipeline({ 5, 1 }) &&
+        recorder.DrawIndexed(draw) &&
+        recorder.EndRenderPass() &&
+        recorder.End();
+
+    HFENGINE_REQUIRE(recorded);
+    HFENGINE_REQUIRE(recorder.Status().valid);
+    HFENGINE_REQUIRE(recorder.Commands().size() == 6);
+}
+
+HFENGINE_TEST_CASE("unit.rhi.commands", "RejectsDrawWithoutBoundPipeline")
+{
+    HFEngine::RHI::CommandListRecorder recorder;
+    const HFEngine::RHI::DrawIndexedDesc draw =
+        HFEngine::Renderer::BuildSandboxMeshDrawDesc({ 1, 1 }, { 2, 1 });
+
+    HFENGINE_REQUIRE(recorder.Begin({ "test command list", HFEngine::RHI::CommandQueueType::Graphics }));
+    HFENGINE_REQUIRE(recorder.BeginRenderPass(HFEngine::Renderer::BuildSandboxRenderPassDesc(640, 480, { 3, 1 }, { 4, 1 })));
+    HFENGINE_REQUIRE(!recorder.DrawIndexed(draw));
+    HFENGINE_REQUIRE(!recorder.Status().valid);
+}
+
+HFENGINE_TEST_CASE("unit.rhi.commands", "RejectsRenderPassWithoutAttachments")
+{
+    HFEngine::RHI::RenderPassDesc pass;
+    pass.debugName = "empty pass";
+    pass.width = 640;
+    pass.height = 480;
+
+    const HFEngine::RHI::ValidationResult result = HFEngine::RHI::ValidateRenderPassDesc(pass);
+
+    HFENGINE_REQUIRE(!result.valid);
 }
 
 HFENGINE_TEST_CASE("unit.rhi.pipeline", "RejectsMissingShaderEntryPoint")

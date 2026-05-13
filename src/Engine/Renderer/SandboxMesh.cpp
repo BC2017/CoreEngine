@@ -106,4 +106,60 @@ namespace HFEngine::Renderer
         desc.indexCount = static_cast<std::uint32_t>(CubeIndices.size());
         return desc;
     }
+
+    RHI::RenderPassDesc BuildSandboxRenderPassDesc(
+        std::uint32_t width,
+        std::uint32_t height,
+        RHI::TextureHandle colorTarget,
+        RHI::TextureHandle depthTarget)
+    {
+        RHI::RenderPassDesc desc;
+        desc.debugName = "sandbox color/depth pass";
+        desc.width = width;
+        desc.height = height;
+        desc.colorAttachments.push_back({
+            "sandbox backbuffer",
+            colorTarget,
+            RHI::ResourceFormat::Bgra8Unorm,
+            true,
+            { 0.025f, 0.035f, 0.055f, 1.0f },
+        });
+        desc.depthAttachment = RHI::DepthAttachmentDesc{
+            "sandbox depth",
+            depthTarget,
+            RHI::ResourceFormat::D32Float,
+            true,
+            1.0f,
+        };
+        return desc;
+    }
+
+    bool ValidateSandboxCommandSequence(
+        const RHI::DrawIndexedDesc& draw,
+        std::uint32_t width,
+        std::uint32_t height,
+        std::string& message)
+    {
+        constexpr RHI::TextureHandle ColorTarget{ 3u, 1u };
+        constexpr RHI::TextureHandle DepthTarget{ 4u, 1u };
+        constexpr RHI::GraphicsPipelineHandle Pipeline{ 5u, 1u };
+
+        RHI::CommandListRecorder recorder;
+        const bool recorded =
+            recorder.Begin({ "sandbox frame command list", RHI::CommandQueueType::Graphics }) &&
+            recorder.BeginRenderPass(BuildSandboxRenderPassDesc(width, height, ColorTarget, DepthTarget)) &&
+            recorder.BindGraphicsPipeline(Pipeline) &&
+            recorder.DrawIndexed(draw) &&
+            recorder.EndRenderPass() &&
+            recorder.End();
+
+        if (!recorded)
+        {
+            message = recorder.Status().message;
+            return false;
+        }
+
+        message = "ok";
+        return true;
+    }
 }

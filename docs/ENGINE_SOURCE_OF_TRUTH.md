@@ -101,6 +101,8 @@ revised.
   and Vulkan uniform descriptors.
 - 2026-05-12: Added public RHI resource handles, indexed draw descriptors, and
   shared sandbox mesh contracts consumed by both backend renderers.
+- 2026-05-12: Added backend-neutral command list and render pass descriptors
+  with command sequencing validation before backend-specific command emission.
 
 ## 4. Architecture Principles
 

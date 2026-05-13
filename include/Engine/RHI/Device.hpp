@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/RHI/CommandList.hpp"
 #include "Engine/RHI/RendererBackend.hpp"
 
 #include <cstdint>
@@ -36,7 +37,11 @@ namespace HFEngine::RHI
     {
     public:
         virtual ~ICommandList() = default;
-        virtual void Begin() = 0;
+        virtual void Begin(const CommandListDesc& desc) = 0;
+        virtual void BeginRenderPass(const RenderPassDesc& desc) = 0;
+        virtual void BindGraphicsPipeline(GraphicsPipelineHandle pipeline) = 0;
+        virtual void DrawIndexed(const DrawIndexedDesc& desc) = 0;
+        virtual void EndRenderPass() = 0;
         virtual void End() = 0;
     };
 
