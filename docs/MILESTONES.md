@@ -151,8 +151,29 @@ Foundation delivered:
 
 Next target:
 
-- Move mesh/pipeline resource ownership behind public RHI handles so scene
-  objects can submit through a backend-neutral path.
+- Move command recording and render submission behind backend-neutral RHI
+  interfaces instead of calling sandbox backend functions directly.
+
+## RHI Render Resource Foundation
+
+Branch: `codex/rhi-render-resource-foundation`
+
+Foundation delivered:
+
+- Public RHI buffer, texture, and graphics pipeline handle aliases using the
+  engine typed handle primitive.
+- Public `DrawIndexedDesc` and validation for indexed mesh submission.
+- Shared sandbox cube mesh data moved out of DX12/Vulkan backend files.
+- Shared sandbox mesh pipeline and draw descriptors consumed by both backend
+  renderers.
+- DX12 and Vulkan sandbox paths now validate shared pipeline/draw contracts and
+  use descriptor draw counts for indexed submission.
+- Unit tests cover indexed draw validation and shared sandbox mesh contracts.
+
+Next target:
+
+- Introduce backend-neutral command list/render pass interfaces so scene-level
+  renderer code can submit draws without directly calling DX12 or Vulkan paths.
 
 ## Milestone 4: Frame Graph
 

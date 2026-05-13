@@ -1,10 +1,20 @@
 #pragma once
 
+#include "Engine/Core/Handle.hpp"
+
 #include <cstdint>
 #include <string>
 
 namespace HFEngine::RHI
 {
+    struct BufferTag;
+    struct TextureTag;
+    struct GraphicsPipelineTag;
+
+    using BufferHandle = Core::Handle<BufferTag>;
+    using TextureHandle = Core::Handle<TextureTag>;
+    using GraphicsPipelineHandle = Core::Handle<GraphicsPipelineTag>;
+
     enum class ResourceFormat
     {
         Unknown,
@@ -36,6 +46,13 @@ namespace HFEngine::RHI
         ShaderRead,
         UnorderedAccess,
         Present
+    };
+
+    enum class IndexFormat
+    {
+        Unknown,
+        Uint16,
+        Uint32
     };
 
     enum ResourceUsage : std::uint32_t
@@ -96,7 +113,20 @@ namespace HFEngine::RHI
         ResourceState after = ResourceState::Undefined;
     };
 
+    struct DrawIndexedDesc
+    {
+        std::string debugName;
+        BufferHandle vertexBuffer;
+        BufferHandle indexBuffer;
+        std::uint32_t vertexStrideBytes = 0;
+        std::uint32_t vertexCount = 0;
+        IndexFormat indexFormat = IndexFormat::Unknown;
+        std::uint32_t indexCount = 0;
+    };
+
     [[nodiscard]] ValidationResult ValidateBufferDesc(const BufferDesc& desc);
     [[nodiscard]] ValidationResult ValidateTextureDesc(const TextureDesc& desc);
+    [[nodiscard]] ValidationResult ValidateDrawIndexedDesc(const DrawIndexedDesc& desc);
+    [[nodiscard]] std::uint32_t IndexFormatSizeBytes(IndexFormat format) noexcept;
     [[nodiscard]] bool IsDepthFormat(ResourceFormat format) noexcept;
 }
